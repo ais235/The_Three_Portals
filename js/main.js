@@ -15,6 +15,8 @@ const DEFAULT_SAVE = {
   equipped:      {},  // { cardId: weaponId }
   ownedWeapons:  [],
   completedLocations: [],
+  artifacts:     [],  // collected artifact ids
+  lastSquad:     [],  // last used squad (allyId array)
 };
 
 // ── GameState ─────────────────────────────────────────────────
@@ -28,11 +30,12 @@ const GameState = (() => {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
-        // deep-merge
         return {
           ...DEFAULT_SAVE,
           ...saved,
-          dust: { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
+          dust:      { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
+          artifacts: saved.artifacts  || [],
+          lastSquad: saved.lastSquad  || [],
         };
       }
     } catch(e) {}
@@ -57,6 +60,8 @@ const GameState = (() => {
       equipped:           data.equipped,
       ownedWeapons:       data.ownedWeapons,
       completedLocations: data.completedLocations,
+      artifacts:          data.artifacts,
+      lastSquad:          data.lastSquad,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(out));
   }
@@ -166,6 +171,22 @@ const GameState = (() => {
   }
   function isCompleted(id) { return data.completedLocations.includes(id); }
 
+  // ── Artifacts ──────────────────────────────────────────────────
+  function addArtifact(id) {
+    if (!data.artifacts.includes(id)) {
+      data.artifacts.push(id);
+      save();
+      return true;
+    }
+    return false; // duplicate
+  }
+  function hasArtifact(id) { return data.artifacts.includes(id); }
+  function getArtifacts()  { return [...data.artifacts]; }
+
+  // ── Last squad ─────────────────────────────────────────────────
+  function setLastSquad(ids) { data.lastSquad = [...ids]; save(); }
+  function getLastSquad()    { return [...(data.lastSquad || [])]; }
+
   // ── Reset (dev) ────────────────────────────────────────────────
   function reset() {
     localStorage.removeItem(SAVE_KEY);
@@ -187,6 +208,8 @@ const GameState = (() => {
     addWeapon, hasWeapon, getOwnedWeapons,
     recycleCard,
     completeLocation, isCompleted,
+    addArtifact, hasArtifact, getArtifacts,
+    setLastSquad, getLastSquad,
     reset,
   };
 })();
@@ -195,12 +218,16 @@ const GameState = (() => {
 
 const App = {
 
+  _currentLocation: null,   // location context for current battle
+  _skipBattleInit:  false,  // set true when initCustomBattle handles setup
+
   init() {
     this.setupNav();
     this.showScreen('home');
     CollectionUI.init();
     InventoryUI.init();
     VillageUI.init();
+    WorldMap.init();
     this.updateHomeStats();
   },
 
@@ -221,29 +248,35 @@ const App = {
     if (btn) btn.classList.add('active');
 
     switch (screenId) {
-      case 'battle':     this.initBattle();        break;
-      case 'collection': CollectionUI.render();     break;
-      case 'inventory':  InventoryUI.render();      break;
-      case 'village':    VillageUI.render();        break;
-      case 'home':       this.updateHomeStats();    break;
+      case 'battle':
+        if (!this._skipBattleInit) this.initBattle();
+        this._skipBattleInit = false;
+        break;
+      case 'collection':  CollectionUI.render();      break;
+      case 'inventory':   InventoryUI.render();       break;
+      case 'village':     VillageUI.render();         break;
+      case 'worldmap':    WorldMap.render();          break;
+      case 'squad_select': SquadSelect.render();      break;
+      case 'home':        this.updateHomeStats();     break;
     }
   },
 
   updateHomeStats() {
     const el = id => document.getElementById(id);
-    if (el('stat-coins'))   el('stat-coins').textContent  = GameState.coins;
-    if (el('stat-unlocked')) el('stat-unlocked').textContent = GameState.getUnlocked().length;
+    if (el('stat-coins'))      el('stat-coins').textContent     = GameState.coins;
+    if (el('stat-unlocked'))   el('stat-unlocked').textContent  = GameState.getUnlocked().length;
+    if (el('stat-locations'))  el('stat-locations').textContent = GameState.isCompleted
+      ? LOCATIONS.filter(l => GameState.isCompleted(l.id)).length
+      : 0;
   },
 
   // ── Battle ─────────────────────────────────────────────────────
 
-  initBattle() {
+  _startBattle(allies, enemies) {
     const resultEl = document.getElementById('battle-result');
     if (resultEl) resultEl.classList.add('hidden');
 
     BattleLog.init();
-    const { allies, enemies } = createTestBattle();
-
     Battle.init(allies, enemies, {
       onLogEntry:      e  => BattleLog.addEntry(e),
       onRender:        st => BattlefieldUI.render(st),
@@ -253,29 +286,80 @@ const App = {
     });
   },
 
+  initBattle() {
+    this._currentLocation = null;
+    const { allies, enemies } = createTestBattle();
+    this._startBattle(allies, enemies);
+  },
+
+  // Called by SquadSelect after building units
+  initCustomBattle(allies, enemies, location) {
+    this._currentLocation = location || null;
+    this._skipBattleInit  = true;       // prevent showScreen from calling initBattle()
+    this.showScreen('battle');
+    this._startBattle(allies, enemies);
+  },
+
   onBattleEnd(result, battleState) {
     BattlefieldUI.render(battleState);
 
-    const rounds        = battleState.round;
-    const damageDealt   = battleState.totalDamageDealt || 0;
-    let   coinsEarned   = 0;
-    let   coinsPenalty  = 0;
-    let   droppedWeapon = null;
+    const loc         = this._currentLocation;
+    const rounds      = battleState.round;
+    const damageDealt = battleState.totalDamageDealt || 0;
+    let coinsEarned   = 0;
+    let coinsPenalty  = 0;
+    let droppedWeapon = null;
+    let droppedScroll = null;
+    let droppedArtifact = null;
 
     if (result === 'victory') {
-      // Base reward + bonus for quick finish
-      coinsEarned = Math.min(150, 80 + rounds * 5);
-      GameState.addCoins(coinsEarned);
-      GameState.completeLocation('zone1_battle1');
+      if (loc) {
+        // Location-based rewards
+        const [minC, maxC] = loc.rewards.coins || [60, 100];
+        coinsEarned = minC + Math.floor(Math.random() * (maxC - minC + 1));
+        GameState.addCoins(coinsEarned);
+        GameState.completeLocation(loc.id);
 
-      // Weapon drop (25% chance)
-      if (Math.random() < 0.25) {
-        const common = WEAPONS.filter(w => w.rarity === 'common');
-        droppedWeapon = common[Math.floor(Math.random() * common.length)] || null;
-        if (droppedWeapon) GameState.addWeapon(droppedWeapon.id);
+        // Weapon drop
+        if (Math.random() < (loc.rewards.weaponChance || 0)) {
+          const rarityMap = { bronze: 'common', silver: 'rare', gold: 'epic' };
+          const rarity = rarityMap[loc.rewards.scrollType] || 'common';
+          const pool = WEAPONS.filter(w => w.rarity === rarity || w.rarity === 'common');
+          droppedWeapon = pool[Math.floor(Math.random() * pool.length)] || null;
+          if (droppedWeapon) GameState.addWeapon(droppedWeapon.id);
+        }
+
+        // Scroll drop
+        if (Math.random() < (loc.rewards.scrollChance || 0)) {
+          droppedScroll = loc.rewards.scrollType || 'bronze';
+          // Represent scroll as bonus coins for now
+          const scrollValue = droppedScroll === 'gold' ? 2000 : droppedScroll === 'silver' ? 500 : 100;
+          GameState.addCoins(scrollValue);
+        }
+
+        // Artifact from boss
+        if (loc.isBoss && loc.rewards.artifact) {
+          const artId  = loc.rewards.artifact;
+          const isNew  = GameState.addArtifact(artId);
+          droppedArtifact = { ...(ARTIFACTS[artId] || { id: artId, name: artId, icon: '🏅' }), isNew };
+        }
+
+        // Unlock next locations — refresh worldmap if visible
+        if (typeof WorldMap !== 'undefined') {
+          const wmEl = document.getElementById('screen-worldmap');
+          if (wmEl && !wmEl.classList.contains('hidden')) WorldMap.render();
+        }
+      } else {
+        // Test battle fallback
+        coinsEarned = Math.min(150, 80 + rounds * 5);
+        GameState.addCoins(coinsEarned);
+        if (Math.random() < 0.25) {
+          const pool = WEAPONS.filter(w => w.rarity === 'common');
+          droppedWeapon = pool[Math.floor(Math.random() * pool.length)] || null;
+          if (droppedWeapon) GameState.addWeapon(droppedWeapon.id);
+        }
       }
     } else {
-      // Penalty: 10% of damage dealt to enemies (max 30 coins)
       coinsPenalty = Math.min(30, Math.floor(damageDealt * 0.1));
       if (coinsPenalty > 0) {
         const before = GameState.coins;
@@ -284,26 +368,28 @@ const App = {
       }
     }
 
-    this.showBattleRewards(result, battleState, { coinsEarned, coinsPenalty, droppedWeapon });
+    this.showBattleRewards(result, battleState, {
+      coinsEarned, coinsPenalty, droppedWeapon, droppedScroll, droppedArtifact,
+    });
   },
 
   showBattleRewards(result, battleState, rewards) {
-    const overlay = document.getElementById('battle-result');
+    const overlay   = document.getElementById('battle-result');
     if (!overlay) return;
 
-    const icon    = document.getElementById('result-icon');
-    const title   = document.getElementById('result-title');
+    const icon      = document.getElementById('result-icon');
+    const title     = document.getElementById('result-title');
     const rewardsEl = document.getElementById('result-rewards');
-    const btns    = document.getElementById('result-buttons');
+    const btns      = document.getElementById('result-buttons');
 
-    const deadAllies  = battleState.allies.filter(u => !u.isAlive).length;
-    const deadEnemies = battleState.enemies.filter(u => !u.isAlive).length;
+    const deadAllies = battleState.allies.filter(u => !u.isAlive).length;
+    const loc        = this._currentLocation;
 
     if (result === 'victory') {
-      if (icon)  icon.textContent  = '🏆';
+      if (icon)  icon.textContent = '🏆';
       if (title) { title.textContent = 'ПОБЕДА!'; title.style.color = '#ffe066'; }
     } else {
-      if (icon)  icon.textContent  = '💀';
+      if (icon)  icon.textContent = '💀';
       if (title) { title.textContent = 'ПОРАЖЕНИЕ!'; title.style.color = '#ff4444'; }
     }
 
@@ -311,23 +397,29 @@ const App = {
       let html = `<div class="result-stat">Раунд: <strong>${battleState.round}</strong> | Потери: <strong>${deadAllies}/${battleState.allies.length}</strong></div>`;
       if (result === 'victory') {
         html += `<div class="result-reward-row">💰 +${rewards.coinsEarned} монет</div>`;
-        if (rewards.droppedWeapon) {
+        if (rewards.droppedWeapon)
           html += `<div class="result-reward-row drop-row">🗡️ Найдено: <strong>${rewards.droppedWeapon.name}</strong> ${rewards.droppedWeapon.icon}</div>`;
-        }
+        if (rewards.droppedScroll)
+          html += `<div class="result-reward-row drop-row">📜 Свиток (${rewards.droppedScroll})</div>`;
+        if (rewards.droppedArtifact)
+          html += `<div class="result-reward-row artifact-row">${rewards.droppedArtifact.icon} <strong>${rewards.droppedArtifact.name}</strong>${rewards.droppedArtifact.isNew ? ' <em>(новый!)</em>' : ''}</div>`;
       } else {
-        if (rewards.coinsPenalty > 0)
-          html += `<div class="result-reward-row penalty-row">💸 −${rewards.coinsPenalty} монет</div>`;
-        else
-          html += `<div class="result-reward-row">Монеты сохранены</div>`;
+        html += rewards.coinsPenalty > 0
+          ? `<div class="result-reward-row penalty-row">💸 −${rewards.coinsPenalty} монет</div>`
+          : `<div class="result-reward-row">Монеты сохранены</div>`;
       }
       rewardsEl.innerHTML = html;
     }
 
     if (btns) {
+      const retryTarget = loc ? `SquadSelect.open(getLocation('${loc.id}'))` : `Battle.restart()`;
+      const mapBtn = loc
+        ? `<button class="result-btn primary" onclick="App.showScreen('worldmap')">🗺️ Карта мира</button>`
+        : '';
       btns.innerHTML = `
-        <button class="result-btn primary" onclick="Battle.restart()">🔄 Снова</button>
+        <button class="result-btn" onclick="${retryTarget}">🔄 Повторить</button>
+        ${mapBtn}
         <button class="result-btn" onclick="App.showScreen('village')">🏘 В деревню</button>
-        <button class="result-btn" onclick="App.showScreen('home')">🏰 Главная</button>
       `;
     }
 

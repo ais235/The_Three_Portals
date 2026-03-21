@@ -14,6 +14,7 @@
       <div class="nav-brand">⚔️ <span>Fantasy Card Quest</span></div>
       <div class="nav-buttons">
         <button class="nav-btn" data-screen="home">🏰 Главная</button>
+        <button class="nav-btn" data-screen="worldmap">🗺️ Карта</button>
         <button class="nav-btn" data-screen="village">🏘 Деревня</button>
         <button class="nav-btn" data-screen="battle">⚔️ Бой</button>
         <button class="nav-btn" data-screen="collection">📚 Коллекция</button>
@@ -33,6 +34,10 @@
             <span class="hb-icon">⚔️</span>
             <span class="hb-text"><strong>Начать бой</strong><small>4 союзника vs 3 зверя</small></span>
           </button>
+          <button class="home-btn primary" onclick="App.showScreen('worldmap')">
+            <span class="hb-icon">🗺️</span>
+            <span class="hb-text"><strong>Карта мира</strong><small>17 локаций, 5 зон</small></span>
+          </button>
           <button class="home-btn" onclick="App.showScreen('village')">
             <span class="hb-icon">🏘</span>
             <span class="hb-text"><strong>Деревня</strong><small>Порталы, обмен, прокачка</small></span>
@@ -49,9 +54,78 @@
         <div class="home-stats">
           <div class="hs-item"><span id="stat-coins">—</span><small>💰 Монет</small></div>
           <div class="hs-item"><span id="stat-unlocked">—</span><small>📚 Открыто карт</small></div>
+          <div class="hs-item"><span id="stat-locations">—</span><small>🗺️ Локаций пройдено</small></div>
           <div class="hs-item"><span>50</span><small>Карт в игре</small></div>
-          <div class="hs-item"><span>31</span><small>Видов оружия</small></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── WORLDMAP SCREEN ──────────────────────────────── -->
+    <div id="screen-worldmap" class="screen hidden">
+      <div class="wm-screen-layout">
+
+        <!-- Scrollable map -->
+        <div class="wm-map-scroll-wrap">
+          <div id="wm-map-container" class="wm-map-container"></div>
+        </div>
+
+        <!-- Detail panel -->
+        <div id="wm-detail-panel" class="wm-detail-panel">
+          <div class="wm-panel-empty">
+            <div class="wm-pe-icon">🗺️</div>
+            <div class="wm-pe-text">Выберите локацию на карте</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SQUAD SELECT SCREEN ───────────────────────────── -->
+    <div id="screen-squad_select" class="screen hidden">
+      <div class="ss-header">
+        <button class="ss-back-btn" onclick="App.showScreen('worldmap')">← Карта</button>
+        <div class="ss-header-center">
+          <div class="ss-title">⚔️ Выбор отряда</div>
+          <div class="ss-loc-name" id="ss-loc-name">Локация</div>
+        </div>
+        <div id="ss-constraints" class="ss-constraints"></div>
+      </div>
+
+      <div class="ss-body">
+
+        <!-- Card pool (left) -->
+        <div class="ss-left">
+          <div class="ss-panel-title">📚 Доступные союзники</div>
+          <div id="ss-card-pool" class="ss-card-pool"></div>
+        </div>
+
+        <!-- Formation (right) -->
+        <div class="ss-right">
+          <div class="ss-panel-title">🛡️ Построение</div>
+          <div class="ss-formation">
+
+            <div class="ss-col" id="ss-col-1">
+              <div class="ss-col-header">⚔️ Передний ряд</div>
+              <div class="ss-col-slots" id="ss-col-slots-1"></div>
+            </div>
+
+            <div class="ss-col" id="ss-col-2">
+              <div class="ss-col-header">🏹 Средний ряд</div>
+              <div class="ss-col-slots" id="ss-col-slots-2"></div>
+            </div>
+
+            <div class="ss-col" id="ss-col-3">
+              <div class="ss-col-header">✨ Задний ряд</div>
+              <div class="ss-col-slots" id="ss-col-slots-3"></div>
+            </div>
+
+          </div>
+
+          <button id="ss-start-btn" class="ss-start-btn" onclick="SquadSelect.startBattle()" disabled>
+            Выберите хотя бы одного
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -246,6 +320,8 @@
 
   <!-- Scripts -->
   <script src="cards_and_weapons.js"></script>
+  <script src="js/data/enemies.js"></script>
+  <script src="js/data/locations.js"></script>
   <script src="js/data/battleUnits.js"></script>
   <script src="js/engine/effects.js"></script>
   <script src="js/engine/ai.js"></script>
@@ -256,6 +332,8 @@
   <script src="js/ui/village.js"></script>
   <script src="js/ui/collection.js"></script>
   <script src="js/ui/inventory.js"></script>
+  <script src="js/ui/worldmap.js"></script>
+  <script src="js/ui/squadSelect.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

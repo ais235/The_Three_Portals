@@ -139,6 +139,159 @@ const T_SNAKE = {
   ],
 };
 
+// ── CLASS → battle mappings ────────────────────────────────────
+const CLASS_ATTACK_COLS = {
+  tank:        [1],
+  spearman:    [1, 2],
+  damage:      [1],
+  archer:      [1, 2],
+  crossbowman: [1, 2, 3],
+  mage_aoe:    [1, 2, 3],
+  mage_single: [1, 2, 3],
+  mage_healer: [1, 2, 3],
+  mage_buffer: [1, 2, 3],
+  mage_debuff: [1, 2, 3],
+};
+
+// ── Create a battle unit from an ALLIES entry + GameState ───────
+function createBattleAlly(allyId, col, row) {
+  const ally = ALLIES.find(a => a.id === allyId);
+  if (!ally) return null;
+
+  const lvl = (typeof GameState !== 'undefined' && GameState.getCardLevel(allyId))
+    || { stars: ally.starRange[0], powerLevel: 1 };
+  const { stars, powerLevel } = lvl;
+  const b = ally.base;
+  const cls = CLASSES[ally.class] || {};
+
+  const stats = {
+    hp:        calcStat(b.hp        || 0, stars, powerLevel),
+    maxHp:     calcStat(b.hp        || 0, stars, powerLevel),
+    meleeAtk:  calcStat(b.meleeAtk  || 0, stars, powerLevel),
+    meleeDef:  calcStat(b.meleeDef  || 0, stars, powerLevel),
+    rangeAtk:  calcStat(b.rangeAtk  || 0, stars, powerLevel),
+    rangeDef:  calcStat(b.rangeDef  || 0, stars, powerLevel),
+    magic:     calcStat(b.magic     || 0, stars, powerLevel),
+    magicDef:  calcStat(b.magicDef  || 0, stars, powerLevel),
+    mana:      b.mana     ? calcStat(b.mana,     stars, powerLevel) : 0,
+    maxMana:   b.mana     ? calcStat(b.mana,     stars, powerLevel) : 0,
+    manaRegen: b.manaRegen || 0,
+    initiative: calcInitiative(b.initiative, stars, powerLevel),
+  };
+
+  // Apply equipped weapon bonuses
+  if (typeof GameState !== 'undefined') {
+    const weaponId = GameState.getEquipped(allyId);
+    if (weaponId) {
+      const weapon = (typeof WEAPONS !== 'undefined') && WEAPONS.find(w => w.id === weaponId);
+      if (weapon && weapon.bonuses) {
+        for (const [stat, val] of Object.entries(weapon.bonuses)) {
+          if (stats[stat] !== undefined) stats[stat] += val;
+          if (stat === 'hp') stats.maxHp += val;
+        }
+      }
+    }
+  }
+
+  return {
+    id:          allyId,
+    name:        ally.name,
+    icon:        ally.icon,
+    class:       ally.class,
+    race:        ally.race,
+    instanceId:  `${allyId}_ally_c${col}_r${row}`,
+    side:        'ally',
+    column:      col,
+    row,
+    stars,
+    powerLevel,
+    stats,
+    statusEffects:    [],
+    isAlive:          true,
+    abilityCooldowns: {},
+    hasActedThisTurn: false,
+    attackColumns:    CLASS_ATTACK_COLS[ally.class] || [1],
+    attackType:       cls.attackType || 'melee',
+    rangeModifiers:   ally.rangeModifiers || null,
+    attackMode:       ally.attackMode || null,
+    abilities:        ally.abilities || [],
+    spells:           ally.spells || [],
+  };
+}
+
+// ── Create a battle unit from ENEMY_TEMPLATES ────────────────────
+function createBattleEnemy(templateId, col, row, stars = 1, level = 1) {
+  const tmpl = (typeof ENEMY_TEMPLATES !== 'undefined') && ENEMY_TEMPLATES[templateId];
+  if (!tmpl) return null;
+
+  const b = tmpl.base;
+  const stats = {
+    hp:        calcStat(b.hp        || 0, stars, level),
+    maxHp:     calcStat(b.hp        || 0, stars, level),
+    meleeAtk:  calcStat(b.meleeAtk  || 0, stars, level),
+    meleeDef:  calcStat(b.meleeDef  || 0, stars, level),
+    rangeAtk:  calcStat(b.rangeAtk  || 0, stars, level),
+    rangeDef:  calcStat(b.rangeDef  || 0, stars, level),
+    magic:     calcStat(b.magic     || 0, stars, level),
+    magicDef:  calcStat(b.magicDef  || 0, stars, level),
+    mana:      b.mana     ? calcStat(b.mana,     stars, level) : 0,
+    maxMana:   b.mana     ? calcStat(b.mana,     stars, level) : 0,
+    manaRegen: b.manaRegen || 0,
+    initiative: calcInitiative(b.initiative, stars, level),
+  };
+
+  return {
+    ...tmpl,
+    instanceId:       `${templateId}_enemy_c${col}_r${row}_${Math.random().toString(36).slice(2,5)}`,
+    side:             'enemy',
+    column:           col,
+    row,
+    stars,
+    level,
+    stats,
+    statusEffects:    [],
+    isAlive:          true,
+    abilityCooldowns: {},
+    hasActedThisTurn: false,
+  };
+}
+
+// ── Generate enemies from a location definition ──────────────────
+function generateLocationEnemies(location) {
+  const zone    = location.zone || 1;
+  const stars   = Math.min(Math.max(zone - 1, 1), 5);
+  const level   = Math.max(1, (zone - 1) * 2);
+  const pool    = location.enemies || [];
+  const [minC, maxC] = location.enemyCount || [1, 2];
+  const count   = minC + Math.floor(Math.random() * (maxC - minC + 1));
+
+  const enemies = [];
+  // Track how many are placed in each column
+  const colCount = { 1: 0, 2: 0, 3: 0 };
+
+  // For boss locations, put first enemy (the boss) at col 1
+  const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
+
+  templateIds.forEach(templateId => {
+    const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
+    if (!tmpl) return;
+
+    // Pick column based on template's attackType / class
+    let col = 1;
+    const at = tmpl.attackType || 'melee';
+    if (at === 'ranged')     col = 2;
+    else if (at === 'magic') col = 3;
+
+    const row = colCount[col] + 1;
+    colCount[col]++;
+
+    const e = createBattleEnemy(templateId, col, row, stars, level);
+    if (e) enemies.push(e);
+  });
+
+  return enemies;
+}
+
 // ── Factory — create the default test battle ────────────────────
 
 function createTestBattle() {
