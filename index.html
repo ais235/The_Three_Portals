@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantasy Card Quest</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── NAV ─────────────────────────────────────────── -->
+    <nav id="main-nav">
+      <div class="nav-brand">⚔️ <span>Fantasy Card Quest</span></div>
+      <div class="nav-buttons">
+        <button class="nav-btn" data-screen="home">🏰 Главная</button>
+        <button class="nav-btn" data-screen="village">🏘 Деревня</button>
+        <button class="nav-btn" data-screen="battle">⚔️ Бой</button>
+        <button class="nav-btn" data-screen="collection">📚 Коллекция</button>
+        <button class="nav-btn" data-screen="inventory">🗡️ Инвентарь</button>
+      </div>
+    </nav>
+
+    <!-- ── HOME ────────────────────────────────────────── -->
+    <div id="screen-home" class="screen">
+      <div class="home-hero">
+        <div class="home-title">
+          <h1>⚔️ Fantasy Card Quest</h1>
+          <p class="home-sub">Тактическая карточная RPG</p>
+        </div>
+        <div class="home-menu">
+          <button class="home-btn primary" onclick="App.showScreen('battle')">
+            <span class="hb-icon">⚔️</span>
+            <span class="hb-text"><strong>Начать бой</strong><small>4 союзника vs 3 зверя</small></span>
+          </button>
+          <button class="home-btn" onclick="App.showScreen('village')">
+            <span class="hb-icon">🏘</span>
+            <span class="hb-text"><strong>Деревня</strong><small>Порталы, обмен, прокачка</small></span>
+          </button>
+          <button class="home-btn" onclick="App.showScreen('collection')">
+            <span class="hb-icon">📚</span>
+            <span class="hb-text"><strong>Коллекция</strong><small>50 уникальных союзников</small></span>
+          </button>
+          <button class="home-btn" onclick="App.showScreen('inventory')">
+            <span class="hb-icon">🗡️</span>
+            <span class="hb-text"><strong>Инвентарь оружия</strong><small>Оружие, броня, артефакты</small></span>
+          </button>
+        </div>
+        <div class="home-stats">
+          <div class="hs-item"><span id="stat-coins">—</span><small>💰 Монет</small></div>
+          <div class="hs-item"><span id="stat-unlocked">—</span><small>📚 Открыто карт</small></div>
+          <div class="hs-item"><span>50</span><small>Карт в игре</small></div>
+          <div class="hs-item"><span>31</span><small>Видов оружия</small></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VILLAGE SCREEN ───────────────────────────────── -->
+    <div id="screen-village" class="screen hidden">
+
+      <!-- Balance bar -->
+      <div class="village-balance-bar">
+        <div class="vb-coins">💰 <strong id="v-coins">0</strong> монет</div>
+        <div class="vb-dust" id="v-dust"></div>
+      </div>
+
+      <!-- Two columns -->
+      <div class="village-layout">
+
+        <!-- Portal circle -->
+        <div class="village-card">
+          <div class="village-card-header">
+            <span class="vc-icon">🌀</span>
+            <h3>Портальный Круг</h3>
+          </div>
+          <p class="vc-desc">Открывайте свитки чтобы получать новых союзников</p>
+          <div id="v-portal-btns" class="portal-btns"></div>
+        </div>
+
+        <!-- Exchange point -->
+        <div class="village-card">
+          <div class="village-card-header">
+            <span class="vc-icon">🔄</span>
+            <h3>Обменный Пункт</h3>
+          </div>
+          <p class="vc-desc">Переработайте ненужные карты в пыль для прокачки</p>
+          <div id="v-exchange-grid" class="exchange-grid"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── BATTLE SCREEN ────────────────────────────────── -->
+    <div id="screen-battle" class="screen hidden">
+
+      <div id="battle-topbar">
+        <div class="btb-round">Раунд: <span id="round-num">1</span></div>
+        <div class="btb-status" id="battle-status-text">Приготовьтесь к бою!</div>
+        <div class="btb-controls">
+          <button id="btn-auto" class="battle-ctrl-btn" onclick="Battle.toggleAuto()">🤖 Авто</button>
+          <button id="btn-fast" class="battle-ctrl-btn" onclick="Battle.runFast()">⚡ Быстро</button>
+          <button class="battle-ctrl-btn danger" onclick="Battle.exit()">✕ Выйти</button>
+        </div>
+      </div>
+
+      <div id="battlefield">
+        <div id="ally-side" class="battlefield-side ally-side">
+          <div class="side-label ally-label">СОЮЗНИКИ</div>
+          <div class="cols-wrapper ally-cols">
+            <div class="bf-col" id="ally-col-3" data-col="3"><div class="col-label">Кол.3 Задний</div></div>
+            <div class="bf-col" id="ally-col-2" data-col="2"><div class="col-label">Кол.2 Средний</div></div>
+            <div class="bf-col" id="ally-col-1" data-col="1"><div class="col-label">Кол.1 Передний</div></div>
+          </div>
+        </div>
+        <div class="battlefield-divider">
+          <div class="divider-line"></div>
+          <div class="divider-vs">VS</div>
+          <div class="divider-line"></div>
+        </div>
+        <div id="enemy-side" class="battlefield-side enemy-side">
+          <div class="side-label enemy-label">ВРАГИ</div>
+          <div class="cols-wrapper enemy-cols">
+            <div class="bf-col" id="enemy-col-1" data-col="1"><div class="col-label">Кол.1 Передний</div></div>
+            <div class="bf-col" id="enemy-col-2" data-col="2"><div class="col-label">Кол.2 Средний</div></div>
+            <div class="bf-col" id="enemy-col-3" data-col="3"><div class="col-label">Кол.3 Задний</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="action-bar">
+        <div id="current-unit-info">
+          <span id="cur-unit-icon">⚔️</span>
+          <span id="cur-unit-name">—</span>
+          <span id="cur-unit-hp" class="cur-hp"></span>
+        </div>
+        <div id="action-buttons">
+          <button id="btn-attack"  class="action-btn" onclick="Battle.playerAttack()"  disabled>⚔️ Атака</button>
+          <button id="btn-ability" class="action-btn ability-btn" onclick="Battle.playerAbility()" disabled>✨ Способность</button>
+          <button id="btn-skip"    class="action-btn skip-btn"   onclick="Battle.playerSkip()"    disabled>⏭ Пропустить</button>
+        </div>
+        <div id="target-hint" class="target-hint hidden">👆 Выберите цель</div>
+      </div>
+
+      <div id="battle-log-container">
+        <div class="log-header">📜 Лог боя</div>
+        <div id="battle-log"></div>
+      </div>
+
+      <!-- Battle result overlay -->
+      <div id="battle-result" class="battle-result hidden">
+        <div class="battle-result-box">
+          <div id="result-icon" class="result-icon"></div>
+          <div id="result-title" class="result-title"></div>
+          <div id="result-rewards" class="result-rewards"></div>
+          <div id="result-buttons" class="result-buttons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── COLLECTION SCREEN ─────────────────────────────── -->
+    <div id="screen-collection" class="screen hidden">
+      <div class="screen-header">
+        <h2>📚 Коллекция союзников</h2>
+        <div class="filters">
+          <select id="filter-race"   onchange="CollectionUI.applyFilters()">
+            <option value="">🌍 Все расы</option>
+          </select>
+          <select id="filter-class"  onchange="CollectionUI.applyFilters()">
+            <option value="">⚔️ Все классы</option>
+          </select>
+          <select id="filter-stars"  onchange="CollectionUI.applyFilters()">
+            <option value="">⭐ Все звёзды</option>
+            <option value="1">★1</option><option value="2">★2</option>
+            <option value="3">★3</option><option value="4">★4</option>
+            <option value="5">★5</option>
+          </select>
+          <select id="filter-locked" onchange="CollectionUI.applyFilters()">
+            <option value="all">🔓 Все карты</option>
+            <option value="unlocked">✅ Открытые</option>
+            <option value="locked">🔒 Закрытые</option>
+          </select>
+          <div class="filter-count">Карт: <span id="card-count">50</span></div>
+        </div>
+      </div>
+      <div id="collection-grid" class="card-grid"></div>
+    </div>
+
+    <!-- ── INVENTORY SCREEN ──────────────────────────────── -->
+    <div id="screen-inventory" class="screen hidden">
+      <div class="screen-header">
+        <h2>🗡️ Инвентарь оружия</h2>
+        <div class="filters">
+          <select id="filter-wtype"   onchange="InventoryUI.applyFilters()">
+            <option value="">🗡️ Все типы</option>
+          </select>
+          <select id="filter-wrarity" onchange="InventoryUI.applyFilters()">
+            <option value="">💎 Все редкости</option>
+          </select>
+          <div class="filter-count">Оружия: <span id="weapon-count">31</span></div>
+        </div>
+      </div>
+      <div class="inventory-layout">
+        <div id="weapon-list" class="weapon-list"></div>
+        <div id="equip-panel" class="equip-panel">
+          <div class="equip-panel-header">
+            <div class="equip-panel-icon" id="ep-weapon-icon">⚔️</div>
+            <div class="equip-panel-title" id="ep-weapon-name">Выберите оружие</div>
+          </div>
+          <div id="ep-weapon-details" class="ep-weapon-details">
+            <p class="ep-hint">Нажмите на оружие слева чтобы увидеть детали и экипировать его союзнику.</p>
+          </div>
+          <div id="ep-allies-section" class="ep-allies-section hidden">
+            <div class="ep-allies-header">Экипировать на:</div>
+            <div id="ep-allies-list" class="ep-allies-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CARD DETAIL MODAL ──────────────────────────────── -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="App.closeModal(event)">
+      <div id="modal-box" class="modal-box">
+        <button class="modal-close" onclick="App.forceCloseModal()">✕</button>
+        <div id="modal-content"></div>
+      </div>
+    </div>
+
+    <!-- ── PORTAL MODAL ───────────────────────────────────── -->
+    <div id="portal-modal" class="portal-modal hidden">
+      <div class="portal-modal-inner">
+        <button class="modal-close portal-modal-close" onclick="Portal.closePortal()">✕</button>
+        <h3 class="portal-modal-title">🌀 Портальный Круг</h3>
+        <div class="portal-scene">
+          <div class="portal-card" id="portal-card">
+            <div class="portal-card-inner" id="portal-card-inner">
+              <div class="portal-card-face portal-card-front" id="portal-front"></div>
+              <div class="portal-card-face portal-card-back"  id="portal-back"></div>
+            </div>
+          </div>
+        </div>
+        <div id="portal-actions" class="portal-actions"></div>
+      </div>
+    </div>
+
+  </div><!-- #app -->
+
+  <!-- Scripts -->
+  <script src="cards_and_weapons.js"></script>
+  <script src="js/data/battleUnits.js"></script>
+  <script src="js/engine/effects.js"></script>
+  <script src="js/engine/ai.js"></script>
+  <script src="js/engine/battle.js"></script>
+  <script src="js/ui/battlefield.js"></script>
+  <script src="js/ui/battleLog.js"></script>
+  <script src="js/ui/portal.js"></script>
+  <script src="js/ui/village.js"></script>
+  <script src="js/ui/collection.js"></script>
+  <script src="js/ui/inventory.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
