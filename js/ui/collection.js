@@ -150,7 +150,7 @@ const CollectionUI = (() => {
       <div style="text-align:center;padding:20px;color:#666;">
         <p>Эта карта ещё не открыта.</p>
         <p style="margin-top:8px;font-size:0.85rem;">Откройте свитки в <strong style="color:#cc8800">Портальном Круге</strong> деревни.</p>
-        <button class="result-btn primary" style="margin-top:16px;" onclick="App.forceCloseModal();App.showScreen('village')">
+        <button class="result-btn primary" style="margin-top:16px;" onclick="App.forceCloseModal();App.showScreen('villagemap')">
           🏘 В деревню
         </button>
       </div>

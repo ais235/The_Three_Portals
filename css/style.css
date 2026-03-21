@@ -1409,6 +1409,23 @@ select { font-family: inherit; }
 .vb-coins { font-size: 0.95rem; font-weight: 700; color: var(--text-accent); }
 .vb-dust  { display: flex; gap: 6px; flex-wrap: wrap; }
 
+.v-back-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.v-back-btn:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
 /* Tab bar */
 .v-tab-bar {
   display: flex;
@@ -2384,6 +2401,240 @@ select { font-family: inherit; }
   .wm-detail-panel   { width: 100%; border-left: none; border-top: 3px solid var(--border); max-height: 45vh; }
   .ss-body           { flex-direction: column; }
   .ss-right          { width: 100%; border-top: 3px solid var(--border); }
+}
+
+/* ================================================================
+   VILLAGE MAP SCREEN
+   ================================================================ */
+
+#screen-villagemap {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Wrapper — fills the full remaining viewport height */
+.vm-wrap {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+  /* Тёмный лес — фон для letterbox-полей по краям картинки */
+  background: #0b1a0b;
+  animation: vm-fadein 0.3s ease-out both;
+}
+
+@keyframes vm-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Background image — contain чтобы вся картинка была видна */
+.vm-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  user-select: none;
+  pointer-events: none;
+  filter: brightness(0.9) saturate(1.1);
+}
+
+/* ── Header bar ─────────────────────────────────────────────── */
+
+.vm-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px 18px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.78) 60%, transparent);
+  pointer-events: none;
+}
+
+.vm-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-accent);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.6);
+  letter-spacing: 0.4px;
+}
+
+.vm-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.vm-coins {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffe066;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+}
+
+.vm-dust { display: flex; gap: 5px; flex-wrap: wrap; }
+
+/* ── Building zones ─────────────────────────────────────────── */
+
+.vm-zones {
+  position: absolute;
+  /* Размер и смещение задаются через _fitZones() в JS,
+     чтобы точно совпадать с реально отрисованной областью картинки */
+  z-index: 10;
+}
+
+.vm-zone {
+  position: absolute;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+
+.vm-zone:hover {
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25),
+              0 0 24px rgba(255, 255, 255, 0.08);
+}
+
+/* ── Tooltip ────────────────────────────────────────────────── */
+
+.vm-tooltip {
+  position: absolute;
+  z-index: 30;
+
+  /* Default: centered, above the zone */
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+
+  background: rgba(8, 8, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 9px 14px;
+  min-width: 120px;
+  max-width: 170px;
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.85);
+  white-space: normal;
+}
+
+.vm-zone:hover .vm-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Direction variants ─────────────────────────────────────── */
+
+/* Tooltip BELOW the zone */
+.vm-zone.tip-below .vm-tooltip {
+  bottom: auto;
+  top: calc(100% + 10px);
+  transform: translateX(-50%) translateY(-8px);
+}
+.vm-zone.tip-below:hover .vm-tooltip {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Align to START (left edge) of zone */
+.vm-zone.tip-start .vm-tooltip {
+  left: 0;
+  transform: translateX(0) translateY(8px);
+}
+.vm-zone.tip-start:hover .vm-tooltip {
+  transform: translateX(0) translateY(0);
+}
+.vm-zone.tip-below.tip-start .vm-tooltip {
+  top: calc(100% + 10px);
+  transform: translateX(0) translateY(-8px);
+}
+.vm-zone.tip-below.tip-start:hover .vm-tooltip {
+  transform: translateX(0) translateY(0);
+}
+
+/* Align to END (right edge) of zone */
+.vm-zone.tip-end .vm-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(8px);
+}
+.vm-zone.tip-end:hover .vm-tooltip {
+  transform: translateX(0) translateY(0);
+}
+.vm-zone.tip-below.tip-end .vm-tooltip {
+  top: calc(100% + 10px);
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(-8px);
+}
+.vm-zone.tip-below.tip-end:hover .vm-tooltip {
+  transform: translateX(0) translateY(0);
+}
+
+/* ── Tooltip contents ───────────────────────────────────────── */
+
+.vm-tt-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.vm-tt-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+.vm-tt-desc {
+  font-size: 0.68rem;
+  color: #a0a0c0;
+  line-height: 1.35;
+}
+
+/* ── Debug mode overlays ────────────────────────────────────── */
+
+.vm-debug-label {
+  position: absolute;
+  bottom: 3px;
+  left: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #ff4444;
+  background: rgba(0,0,0,0.7);
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.vm-debug-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(200, 0, 0, 0.75);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 99px;
+  pointer-events: none;
+  z-index: 50;
+  letter-spacing: 0.5px;
 }
 
 /* ================================================================

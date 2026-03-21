@@ -40,12 +40,16 @@ const VillageUI = (() => {
   function _renderBalance() {
     const coinsEl = document.getElementById('v-coins');
     const dustEl  = document.getElementById('v-dust');
+    const backEl  = document.getElementById('v-map-back');
     if (coinsEl) coinsEl.textContent = GameState.coins;
     if (dustEl) {
       const dust = GameState.getDust();
       dustEl.innerHTML = [1,2,3,4,5].map(s =>
         `<span class="dust-chip star-${s}">★${s} <strong>${dust[s]||0}</strong></span>`
       ).join('');
+    }
+    if (backEl) {
+      backEl.onclick = () => App.showScreen('villagemap');
     }
   }
 

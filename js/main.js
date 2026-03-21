@@ -400,6 +400,7 @@ const App = {
     CollectionUI.init();
     InventoryUI.init();
     VillageUI.init();
+    VillageMapUI.init();
     WorldMap.init();
     this.updateHomeStats();
   },
@@ -425,12 +426,13 @@ const App = {
         if (!this._skipBattleInit) this.initBattle();
         this._skipBattleInit = false;
         break;
-      case 'collection':  CollectionUI.render();      break;
-      case 'inventory':   InventoryUI.render();       break;
-      case 'village':     VillageUI.render();         break;
-      case 'worldmap':    WorldMap.render();          break;
+      case 'collection':   CollectionUI.render();     break;
+      case 'inventory':    InventoryUI.render();      break;
+      case 'village':      VillageUI.render();        break;
+      case 'villagemap':   VillageMapUI.render();     break;
+      case 'worldmap':     WorldMap.render();         break;
       case 'squad_select': SquadSelect.render();      break;
-      case 'home':        this.updateHomeStats();     break;
+      case 'home':         this.updateHomeStats();    break;
     }
   },
 
@@ -596,7 +598,7 @@ const App = {
       btns.innerHTML = `
         <button class="result-btn" onclick="${retryTarget}">🔄 Повторить</button>
         ${mapBtn}
-        <button class="result-btn" onclick="App.showScreen('village')">🏘 В деревню</button>
+        <button class="result-btn" onclick="App.showScreen('villagemap')">🏘 В деревню</button>
       `;
     }
 

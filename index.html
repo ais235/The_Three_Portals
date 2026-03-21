@@ -15,7 +15,7 @@
       <div class="nav-buttons">
         <button class="nav-btn" data-screen="home">🏰 Главная</button>
         <button class="nav-btn" data-screen="worldmap">🗺️ Карта</button>
-        <button class="nav-btn" data-screen="village">🏘 Деревня</button>
+        <button class="nav-btn" data-screen="villagemap">🏘 Деревня</button>
         <button class="nav-btn" data-screen="battle">⚔️ Бой</button>
         <button class="nav-btn" data-screen="collection">📚 Коллекция</button>
         <button class="nav-btn" data-screen="inventory">🗡️ Инвентарь</button>
@@ -38,7 +38,7 @@
             <span class="hb-icon">🗺️</span>
             <span class="hb-text"><strong>Карта мира</strong><small>17 локаций, 5 зон</small></span>
           </button>
-          <button class="home-btn" onclick="App.showScreen('village')">
+          <button class="home-btn" onclick="App.showScreen('villagemap')">
             <span class="hb-icon">🏘</span>
             <span class="hb-text"><strong>Деревня</strong><small>Порталы, обмен, прокачка</small></span>
           </button>
@@ -129,11 +129,15 @@
       </div>
     </div>
 
+    <!-- ── VILLAGE MAP SCREEN ───────────────────────────── -->
+    <div id="screen-villagemap" class="screen hidden"></div>
+
     <!-- ── VILLAGE SCREEN ───────────────────────────────── -->
     <div id="screen-village" class="screen hidden">
 
       <!-- Balance bar -->
       <div class="village-balance-bar">
+        <button id="v-map-back" class="v-back-btn">← Деревня</button>
         <div class="vb-coins">💰 <strong id="v-coins">0</strong> монет</div>
         <div class="vb-dust" id="v-dust"></div>
       </div>
@@ -316,6 +320,7 @@
   <script src="js/ui/inventory.js"></script>
   <script src="js/ui/worldmap.js"></script>
   <script src="js/ui/squadSelect.js"></script>
+  <script src="js/ui/villageMap.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
