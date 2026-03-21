@@ -193,6 +193,17 @@ function createBattleAlly(allyId, col, row) {
     }
   }
 
+  // Apply temple (artifact) bonuses
+  if (typeof getTempleBonus === 'function') {
+    const temple = getTempleBonus();
+    for (const [stat, val] of Object.entries(temple)) {
+      if (stats[stat] !== undefined) {
+        stats[stat] += val;
+        if (stat === 'hp') stats.maxHp += val;
+      }
+    }
+  }
+
   return {
     id:          allyId,
     name:        ally.name,

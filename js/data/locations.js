@@ -278,6 +278,21 @@ const ZONE_META = {
   5: { label: 'Зона 5',  color: '#1a0018', borderColor: '#9a00aa', icon: '☠️' },
 };
 
+// ── Temple bonus aggregator ────────────────────────────────────
+function getTempleBonus() {
+  if (typeof GameState === 'undefined') return {};
+  const collected = GameState.getArtifacts ? GameState.getArtifacts() : [];
+  const bonus = {};
+  collected.forEach(id => {
+    const art = ARTIFACTS[id];
+    if (!art || !art.bonus) return;
+    Object.entries(art.bonus).forEach(([stat, val]) => {
+      bonus[stat] = (bonus[stat] || 0) + val;
+    });
+  });
+  return bonus;
+}
+
 // Artifact descriptions
 const ARTIFACTS = {
   warlord_pauldron: {

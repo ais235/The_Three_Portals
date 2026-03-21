@@ -11,12 +11,18 @@ const DEFAULT_SAVE = {
     'straznik','opolchenec','kopeyshik','luchnik','poslushnik',
     'ohotnik','uchenik_ognya','elektrik','wolf',
   ],
-  cardLevels:    {},  // { cardId: { stars, powerLevel } }
-  equipped:      {},  // { cardId: weaponId }
+  cardLevels:    {},
+  equipped:      {},
   ownedWeapons:  [],
   completedLocations: [],
-  artifacts:     [],  // collected artifact ids
-  lastSquad:     [],  // last used squad (allyId array)
+  artifacts:     [],
+  lastSquad:     [],
+  // ── Этап 4 ──
+  shopLastRefresh:      '',     // date string YYYY-MM-DD
+  shopItems:            [],     // [{ type, id, stars?, rarity?, price, purchased }]
+  shopFreeRefreshUsed:  false,  // resets daily
+  questLastReset:       '',     // date string
+  activeQuests:         [],     // [{ id, type, label, target, progress, claimed, reward, rewardLabel }]
 };
 
 // ── GameState ─────────────────────────────────────────────────
@@ -24,6 +30,86 @@ const DEFAULT_SAVE = {
 const GameState = (() => {
   let data = _loadSave();
   _ensureCardLevels(data);
+
+  // ── Private helpers ────────────────────────────────────────────
+  function _todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function _shuffleArr(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Quest definitions (private)
+  const _QUEST_DEFS = [
+    { id:'complete_locations', label:'Пройди {n} локаций',    targets:[1,2,3],
+      reward: t => ({ type:'coins', amount: t * 100 }),       rewardLabel: t => `+${t*100} монет` },
+    { id:'kill_enemies',       label:'Победи {n} врагов',      targets:[5,10,20],
+      reward: t => ({ type:'coins', amount: t * 12 }),        rewardLabel: t => `+${t*12} монет` },
+    { id:'open_scrolls',       label:'Открой {n} свитков',     targets:[1,2,3],
+      reward: t => ({ type:'dust', star:2, amount: t }),      rewardLabel: t => `+${t} пыль ★2` },
+    { id:'spend_coins',        label:'Потрать {n} монет',      targets:[100,300,500],
+      reward: t => ({ type:'dust', star:3, amount:Math.ceil(t/100) }), rewardLabel: t => `+${Math.ceil(t/100)} пыль ★3` },
+    { id:'upgrade_cards',      label:'Улучши карту {n} раз',   targets:[1,2,3],
+      reward: t => ({ type:'dust', star:1, amount: t }),      rewardLabel: t => `+${t} пыль ★1` },
+  ];
+
+  function _generateDailyQuests() {
+    const pool = _shuffleArr([..._QUEST_DEFS]);
+    return pool.slice(0, 3).map(def => {
+      const t = def.targets[Math.floor(Math.random() * def.targets.length)];
+      return {
+        id:          def.id + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+        type:        def.id,
+        label:       def.label.replace('{n}', t),
+        target:      t,
+        progress:    0,
+        claimed:     false,
+        reward:      def.reward(t),
+        rewardLabel: def.rewardLabel(t),
+      };
+    });
+  }
+
+  function _generateShopItems() {
+    const ownedSet   = new Set(data.unlockedCards || []);
+    const freshCards = ALLIES.filter(a => !ownedSet.has(a.id));
+    const cardPool   = _shuffleArr(freshCards.length >= 4 ? freshCards : [...ALLIES]);
+    const cardItems  = cardPool.slice(0, 4).map(ally => {
+      const stars = ally.starRange[0];
+      const price = stars === 1 ? 80 : stars === 2 ? 300 : stars === 3 ? 800 : stars === 4 ? 1500 : 3000;
+      return { type:'card', id:ally.id, stars, price, purchased:false };
+    });
+    const weapPool   = _shuffleArr([...(typeof WEAPONS !== 'undefined' ? WEAPONS : [])]);
+    const weapItems  = weapPool.slice(0, 2).map(w => {
+      const price = w.rarity === 'common' ? 150 : w.rarity === 'rare' ? 500 : w.rarity === 'epic' ? 1200 : 2500;
+      return { type:'weapon', id:w.id, rarity:w.rarity, price, purchased:false };
+    });
+    return [...cardItems, ...weapItems];
+  }
+
+  function _checkShopRefresh() {
+    const today = _todayStr();
+    if (data.shopLastRefresh !== today) {
+      data.shopLastRefresh     = today;
+      data.shopItems           = _generateShopItems();
+      data.shopFreeRefreshUsed = false;
+      save();
+    }
+  }
+
+  function _checkQuestReset() {
+    const today = _todayStr();
+    if (data.questLastReset !== today) {
+      data.questLastReset = today;
+      data.activeQuests   = _generateDailyQuests();
+      save();
+    }
+  }
 
   function _loadSave() {
     try {
@@ -34,8 +120,10 @@ const GameState = (() => {
           ...DEFAULT_SAVE,
           ...saved,
           dust:      { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
-          artifacts: saved.artifacts  || [],
-          lastSquad: saved.lastSquad  || [],
+          artifacts: saved.artifacts    || [],
+          lastSquad: saved.lastSquad    || [],
+          shopItems: saved.shopItems    || [],
+          activeQuests: saved.activeQuests || [],
         };
       }
     } catch(e) {}
@@ -52,24 +140,29 @@ const GameState = (() => {
   }
 
   function save() {
-    const out = {
-      coins:              data.coins,
-      dust:               data.dust,
-      unlockedCards:      data.unlockedCards,
-      cardLevels:         data.cardLevels,
-      equipped:           data.equipped,
-      ownedWeapons:       data.ownedWeapons,
-      completedLocations: data.completedLocations,
-      artifacts:          data.artifacts,
-      lastSquad:          data.lastSquad,
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(out));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      coins:               data.coins,
+      dust:                data.dust,
+      unlockedCards:       data.unlockedCards,
+      cardLevels:          data.cardLevels,
+      equipped:            data.equipped,
+      ownedWeapons:        data.ownedWeapons,
+      completedLocations:  data.completedLocations,
+      artifacts:           data.artifacts,
+      lastSquad:           data.lastSquad,
+      shopLastRefresh:     data.shopLastRefresh,
+      shopItems:           data.shopItems,
+      shopFreeRefreshUsed: data.shopFreeRefreshUsed,
+      questLastReset:      data.questLastReset,
+      activeQuests:        data.activeQuests,
+    }));
   }
 
   // ── Coins ──────────────────────────────────────────────────────
-  function spendCoins(amount) {
+  function spendCoins(amount, trackQuest = true) {
     if (data.coins < amount) return false;
     data.coins -= amount;
+    if (trackQuest) incrementQuestProgress('spend_coins', amount);
     save();
     return true;
   }
@@ -113,6 +206,7 @@ const GameState = (() => {
     if (lvl.powerLevel >= maxPower) return { ok: false, reason: 'Максимальный уровень' };
     if (!spendDust(lvl.stars, 1)) return { ok: false, reason: `Недостаточно пыли ★${lvl.stars}` };
     lvl.powerLevel++;
+    incrementQuestProgress('upgrade_cards', 1);
     save();
     return { ok: true };
   }
@@ -166,6 +260,7 @@ const GameState = (() => {
   function completeLocation(id) {
     if (!data.completedLocations.includes(id)) {
       data.completedLocations.push(id);
+      incrementQuestProgress('complete_locations', 1);
       save();
     }
   }
@@ -186,6 +281,82 @@ const GameState = (() => {
   // ── Last squad ─────────────────────────────────────────────────
   function setLastSquad(ids) { data.lastSquad = [...ids]; save(); }
   function getLastSquad()    { return [...(data.lastSquad || [])]; }
+
+  // ── Shop ───────────────────────────────────────────────────────
+  function getShopItems() {
+    _checkShopRefresh();
+    return data.shopItems || [];
+  }
+
+  function buyShopItem(idx) {
+    _checkShopRefresh();
+    const item = (data.shopItems || [])[idx];
+    if (!item || item.purchased) return { ok:false, reason:'Уже куплено' };
+    if (!spendCoins(item.price, true)) return { ok:false, reason:`Недостаточно монет (нужно ${item.price})` };
+    item.purchased = true;
+    if (item.type === 'card') {
+      unlockCard(item.id, item.stars);
+    } else if (item.type === 'weapon') {
+      addWeapon(item.id);
+    }
+    save();
+    return { ok:true };
+  }
+
+  function refreshShop(force = false) {
+    _checkShopRefresh();
+    if (!force && !data.shopFreeRefreshUsed) {
+      // Free refresh
+      data.shopFreeRefreshUsed = true;
+      data.shopItems = _generateShopItems();
+      save();
+      return { ok:true, cost:0 };
+    }
+    // Paid refresh
+    const cost = 200;
+    if (!spendCoins(cost, false)) return { ok:false, reason:`Нужно ${cost} монет для обновления` };
+    data.shopItems = _generateShopItems();
+    save();
+    return { ok:true, cost };
+  }
+
+  // ── Quests ─────────────────────────────────────────────────────
+  function getActiveQuests() {
+    _checkQuestReset();
+    return [...(data.activeQuests || [])];
+  }
+
+  function incrementQuestProgress(type, amount = 1) {
+    if (!data.activeQuests || !data.activeQuests.length) return;
+    let changed = false;
+    data.activeQuests.forEach(q => {
+      if (q.type === type && !q.claimed && q.progress < q.target) {
+        q.progress = Math.min(q.target, q.progress + amount);
+        changed = true;
+      }
+    });
+    if (changed) save();
+  }
+
+  function claimQuestReward(questId) {
+    const q = (data.activeQuests || []).find(q => q.id === questId);
+    if (!q) return { ok:false, reason:'Задание не найдено' };
+    if (q.progress < q.target) return { ok:false, reason:'Задание не выполнено' };
+    if (q.claimed) return { ok:false, reason:'Награда уже получена' };
+    q.claimed = true;
+    const r = q.reward;
+    if (r.type === 'coins') {
+      addCoins(r.amount);
+    } else if (r.type === 'dust') {
+      addDust(r.star, r.amount);
+    }
+    save();
+    return { ok:true, reward: r };
+  }
+
+  function recordKills(count) {
+    if (count > 0) incrementQuestProgress('kill_enemies', count);
+  }
 
   // ── Reset (dev) ────────────────────────────────────────────────
   function reset() {
@@ -210,6 +381,8 @@ const GameState = (() => {
     completeLocation, isCompleted,
     addArtifact, hasArtifact, getArtifacts,
     setLastSquad, getLastSquad,
+    getShopItems, buyShopItem, refreshShop,
+    getActiveQuests, incrementQuestProgress, claimQuestReward, recordKills,
     reset,
   };
 })();
@@ -367,6 +540,10 @@ const App = {
         coinsPenalty = Math.min(coinsPenalty, before);
       }
     }
+
+    // Quest: count kills
+    const deadEnemies = battleState.enemies.filter(u => !u.isAlive).length;
+    if (deadEnemies > 0) GameState.recordKills(deadEnemies);
 
     this.showBattleRewards(result, battleState, {
       coinsEarned, coinsPenalty, droppedWeapon, droppedScroll, droppedArtifact,

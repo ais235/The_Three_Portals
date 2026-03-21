@@ -180,6 +180,12 @@ const Portal = (() => {
     if (inner) clearTimeout(inner._flipTimer);
 
     if (modal) modal.classList.add('hidden');
+
+    // Quest: open_scrolls
+    if (typeof GameState !== 'undefined' && GameState.incrementQuestProgress) {
+      GameState.incrementQuestProgress('open_scrolls', 1);
+    }
+
     const cb = actEl?._onComplete;
     if (cb) cb();
 
