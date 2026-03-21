@@ -2385,3 +2385,58 @@ select { font-family: inherit; }
   .ss-body           { flex-direction: column; }
   .ss-right          { width: 100%; border-top: 3px solid var(--border); }
 }
+
+/* ================================================================
+   FLOATING DAMAGE NUMBERS
+   ================================================================ */
+
+.float-num {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  user-select: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1;
+  text-shadow:
+    0 1px 4px rgba(0,0,0,0.9),
+    0 0 8px rgba(0,0,0,0.6);
+  animation: floatUp 0.82s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  /* translate so the number is horizontally centred on the spawn point */
+  transform: translateX(-50%);
+}
+
+/* Type colours */
+.float-damage { color: #E24B4A; }
+.float-heal   { color: #4cde6a; }
+.float-miss   {
+  color: #a0a0c0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.float-crit {
+  color: #FF8C1A;
+  font-size: 1.45rem;
+  text-shadow:
+    0 0 12px rgba(255, 140, 26, 0.75),
+    0 1px 4px rgba(0,0,0,0.9);
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0)   scale(1);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-6px) scale(1.22);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-52px) scale(0.80);
+  }
+}

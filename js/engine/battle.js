@@ -196,6 +196,7 @@ const Battle = (() => {
     const dodgeAb = hasAbility(target, 'dodge');
     if (dodgeAb && Math.random() < (dodgeAb.dodgeChance || 0.15)) {
       log('system', `${attacker.name} промахивается — ${target.name} уклоняется! 💨`);
+      if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(target.instanceId, 0, 'miss');
       return;
     }
 
@@ -210,11 +211,19 @@ const Battle = (() => {
       rangeMod = mod;
     }
 
-    const dmg = calcDmg(attacker, target, attackType, rangeMod);
+    // Crit roll (15% chance → ×1.5 damage)
+    const isCrit = Math.random() < 0.15;
+    const baseDmg = calcDmg(attacker, target, attackType, rangeMod);
+    const dmg = isCrit ? Math.round(baseDmg * 1.5) : baseDmg;
+
     applyDamage(target, dmg, attacker.side);
+    if (state.mode !== 'fast') {
+      BattlefieldUI.showDamageNumber(target.instanceId, dmg, isCrit ? 'crit' : 'damage');
+    }
 
     const rangeSuffix = (rangeMod < 1) ? ` (×${rangeMod} дальность)` : '';
-    log('damage', `${attacker.name} атакует ${target.name} — ${dmg} урона${rangeSuffix}`);
+    const critSuffix  = isCrit ? ' 💥 КРИ!' : '';
+    log('damage', `${attacker.name} атакует ${target.name} — ${dmg} урона${rangeSuffix}${critSuffix}`);
 
     // On-hit effects
     checkOnHitEffects(attacker, target);
@@ -224,9 +233,14 @@ const Battle = (() => {
       const targets2 = AI.getValidTargets(attacker, getOpponentSide(attacker));
       const target2 = targets2.filter(t => t.isAlive)[Math.floor(Math.random() * targets2.length)];
       if (target2 && target2.isAlive) {
-        const dmg2 = calcDmg(attacker, target2, attackType, attacker.rangeModifiers?.[target2.column] ?? 1);
+        const isCrit2 = Math.random() < 0.15;
+        const base2   = calcDmg(attacker, target2, attackType, attacker.rangeModifiers?.[target2.column] ?? 1);
+        const dmg2    = isCrit2 ? Math.round(base2 * 1.5) : base2;
         applyDamage(target2, dmg2, attacker.side);
-        log('damage', `${attacker.name} 2й выстрел → ${target2.name} — ${dmg2} урона`);
+        if (state.mode !== 'fast') {
+          BattlefieldUI.showDamageNumber(target2.instanceId, dmg2, isCrit2 ? 'crit' : 'damage');
+        }
+        log('damage', `${attacker.name} 2й выстрел → ${target2.name} — ${dmg2} урона${isCrit2 ? ' 💥' : ''}`);
         checkOnHitEffects(attacker, target2);
       }
     }
@@ -242,12 +256,13 @@ const Battle = (() => {
     attacker.stats.mana = (attacker.stats.mana || 0) - cost;
 
     if (spell.damage) {
-      const dmgVal = spell.damage.min + Math.floor(Math.random() * (spell.damage.max - spell.damage.min + 1));
+      const dmgVal  = spell.damage.min + Math.floor(Math.random() * (spell.damage.max - spell.damage.min + 1));
       const targets = resolveSpellTargets(spell, attacker);
       targets.forEach(t => {
         if (!t.isAlive) return;
         const dmg = Math.max(1, dmgVal - t.stats.magicDef);
         applyDamage(t, dmg, attacker.side);
+        if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, dmg, 'damage');
         log('damage', `${attacker.name} → ${spell.name} по ${t.name} — ${dmg} урона ✨`);
       });
     }
@@ -259,6 +274,7 @@ const Battle = (() => {
         if (!t.isAlive) return;
         const healed = Math.min(healVal, t.stats.maxHp - t.stats.hp);
         t.stats.hp += healed;
+        if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, healed, 'heal');
         log('heal', `${attacker.name} → ${spell.name}: ${t.name} восстанавливает ${healed} HP 💚`);
       });
     }

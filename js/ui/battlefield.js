@@ -192,6 +192,41 @@ const BattlefieldUI = (() => {
     }
   }
 
+  // ── Floating damage numbers ────────────────────────────────────
+
+  /**
+   * showDamageNumber(instanceId, value, type)
+   * type: 'damage' | 'heal' | 'miss' | 'crit'
+   * Spawns a div above the unit card, floats up 48px, fades out in 0.8s,
+   * then removes itself on animationend.
+   */
+  function showDamageNumber(instanceId, value, type) {
+    const card = document.querySelector(`[data-instance-id="${instanceId}"]`);
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    if (!rect.width) return; // card not visible
+
+    const el = document.createElement('div');
+    el.className = `float-num float-${type}`;
+
+    switch (type) {
+      case 'miss':   el.textContent = 'ПРОМАХ!';       break;
+      case 'heal':   el.textContent = `+${value} ❤️`;  break;
+      case 'crit':   el.textContent = `💥 ${value}!`;  break;
+      default:       el.textContent = `-${value}`;      break;
+    }
+
+    // Random slight horizontal spread so numbers from multi-hits don't stack
+    const jitter = (Math.random() - 0.5) * 32;
+
+    el.style.left = `${rect.left + rect.width / 2 + jitter}px`;
+    el.style.top  = `${rect.top + 8}px`;
+
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+
   // Show battle result overlay
   function showResult(result, battleState) {
     const overlay = document.getElementById('battle-result');
@@ -219,5 +254,5 @@ const BattlefieldUI = (() => {
     overlay.classList.remove('hidden');
   }
 
-  return { render, requestTarget, markTargetable, showResult, updateCurrentUnitInfo };
+  return { render, requestTarget, markTargetable, showResult, updateCurrentUnitInfo, showDamageNumber };
 })();
