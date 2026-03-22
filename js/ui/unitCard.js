@@ -115,10 +115,8 @@ function buildMiniCard(card, options = {}) {
       </div>
       <div class="fc-abs">
         ${(card.abilities || []).slice(0, 2).map(a => `
-          <div class="fc-ab">
-            <div class="fc-ab-dot" style="background:${getAbColor(a)}"></div>
-            <span class="fc-ab-text">${a.name}: ${_truncate(a.desc || a.description || '', 28)}</span>
-          </div>`).join('')}
+          <div class="fc-ab" style="--ab-color:${getAbColor(a)}">${a.name}: ${a.desc || a.description || ''}</div>`
+      ).join('')}
       </div>
       <div class="fc-ft">
         <span>⚡ Иниц: ${calcInitiative(card.base.initiative, stars, powerLevel).toFixed(1)}</span>
@@ -237,6 +235,16 @@ function showCardDetail(cardId) {
 
   overlay.addEventListener('click', closeCardDetail);
   document.body.appendChild(overlay);
+
+  // В левой колонке заменяем блок способностей на лор карты
+  const abBlock = overlay.querySelector('.dm-left .fc-abs');
+  if (abBlock) {
+    const loreRaw = card.lore ? Object.values(card.lore)[0] : null;
+    const loreText = typeof loreRaw === 'string' ? loreRaw : (loreRaw?.flavor || '');
+    abBlock.innerHTML = loreText
+      ? `<div class="dm-lore-block">"${loreText}"</div>`
+      : '';
+  }
 }
 
 function closeCardDetail() {
