@@ -4,9 +4,7 @@
 
 const ExchangeUI = (() => {
 
-  let _selected = [];  // card IDs selected for recycling
-
-  // ── Toast helper (VillageUI available at call time) ───────────
+  let _selected = [];
 
   function _toast(msg, type) {
     if (typeof VillageUI !== 'undefined' && VillageUI.showToast) {
@@ -15,15 +13,16 @@ const ExchangeUI = (() => {
   }
 
   // ── Build HTML ────────────────────────────────────────────────
+  // Layout: [NPC 180px fixed] | [Cards 300px] | [Right: cauldron top + queue bottom]
 
   function buildHTML() {
     return `
-      <img class="building-bg" src="assets/exchange_bg.jpg" alt=""
-           onerror="this.style.display='none'">
+      <img class="building-bg" src="assets/exchange_bg.png"
+           onerror="this.src='assets/building-bg.png'">
       <div class="exchange-wrap">
         <div class="exchange-main">
 
-          <!-- Left: card selection list -->
+          <!-- Left: card selection (300px) -->
           <div class="cards-col">
             <div class="cards-col-header">
               <span class="col-title">⚗️ Карты</span>
@@ -32,30 +31,33 @@ const ExchangeUI = (() => {
             <div class="cards-scroll" id="exchange-cards-grid"></div>
           </div>
 
-          <!-- Center: cauldron -->
-          <div class="cauldron-col">
-            <span id="cauldron-emoji">🫕</span>
-            <div class="cauldron-label">Котёл алхимика</div>
-            <div class="cauldron-hint">Выбери карты — переработай в пыль</div>
-          </div>
+          <!-- Right: cauldron (top) + queue (bottom) -->
+          <div class="right-col">
 
-          <!-- Right: queue + action -->
-          <div class="queue-col">
-            <div class="queue-title">Очередь переработки</div>
-            <div class="queue-list" id="exchange-queue">
-              <div class="queue-empty">Выбери карты слева</div>
+            <div class="cauldron-zone">
+              <div class="cauldron-wrap">
+                <div id="cauldron-emoji" class="cauldron">🫕</div>
+              </div>
+              <div class="cauldron-label" id="cauldron-hint">
+                Выбери карты слева — брось в котёл
+              </div>
+              <button class="brew-btn" id="brew-btn"
+                      onclick="ExchangeUI.doExchange()" disabled>
+                🔥 Переработать
+              </button>
             </div>
-            <div class="queue-sep"></div>
-            <div class="queue-total-row">
-              <span class="queue-total-label">Получишь:</span>
-              <span class="queue-total-val" id="exchange-total">—</span>
-            </div>
-            <button class="exc-do-btn" id="exc-do-btn"
-                    onclick="ExchangeUI.doExchange()" disabled>
-              🔥 Переработать
-            </button>
-          </div>
 
+            <div class="queue-zone">
+              <div class="queue-header">В котёл:</div>
+              <div class="queue-list" id="exchange-queue">
+                <div class="queue-empty">Выбери карты слева</div>
+              </div>
+              <div class="dust-result" id="dust-result">
+                <div class="dr-empty">Ничего не выбрано</div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>`;
   }
@@ -68,7 +70,11 @@ const ExchangeUI = (() => {
 
     const unlocked = GameState.getUnlocked();
     const seen   = new Set();
-    const unique = unlocked.filter(id => { if (seen.has(id)) return false; seen.add(id); return true; });
+    const unique = unlocked.filter(id => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
 
     if (!unique.length) {
       grid.innerHTML = '<div class="queue-empty" style="grid-column:1/-1">Нет карт для переработки</div>';
@@ -91,22 +97,22 @@ const ExchangeUI = (() => {
     }).join('');
   }
 
-  // ── Render queue column ───────────────────────────────────────
+  // ── Render queue + dust result ────────────────────────────────
 
   function renderQueue() {
-    const list  = document.getElementById('exchange-queue');
-    const total = document.getElementById('exchange-total');
-    const btn   = document.getElementById('exc-do-btn');
-    if (!list || !total) return;
+    const list   = document.getElementById('exchange-queue');
+    const result = document.getElementById('dust-result');
+    const btn    = document.getElementById('brew-btn');
+    if (!list || !result) return;
 
     if (!_selected.length) {
-      list.innerHTML = '<div class="queue-empty">Выбери карты слева</div>';
-      total.textContent = '—';
+      list.innerHTML   = '<div class="queue-empty">Выбери карты слева</div>';
+      result.innerHTML = '<div class="dr-empty">Ничего не выбрано</div>';
       if (btn) btn.disabled = true;
       return;
     }
 
-    // Compute dust per star
+    // Dust totals per star level
     const dustMap = {};
     _selected.forEach(id => {
       const ally  = ALLIES.find(a => a.id === id);
@@ -115,6 +121,7 @@ const ExchangeUI = (() => {
       dustMap[stars] = (dustMap[stars] || 0) + 1;
     });
 
+    // Queue items list
     list.innerHTML = _selected.map(id => {
       const ally  = ALLIES.find(a => a.id === id);
       const lvl   = GameState.getCardLevel(id);
@@ -128,10 +135,15 @@ const ExchangeUI = (() => {
         </div>`;
     }).join('');
 
-    total.textContent = Object.entries(dustMap)
+    // Dust result — stacked rows per star
+    result.innerHTML = Object.entries(dustMap)
       .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([s, n]) => `+${n} пыль ★${s}`)
-      .join(' · ');
+      .map(([stars, count]) => `
+        <div class="dr-row">
+          <span class="dr-star">Пыль ★${stars}</span>
+          <span class="dr-val">+${count}</span>
+        </div>`)
+      .join('');
 
     if (btn) btn.disabled = false;
   }
@@ -156,12 +168,9 @@ const ExchangeUI = (() => {
 
     let recycled = 0;
     toProcess.forEach(id => {
-      const result = GameState.recycleCard(id);
-      if (result.ok) {
-        recycled++;
-      } else {
-        _toast(result.reason, 'error');
-      }
+      const res = GameState.recycleCard(id);
+      if (res.ok) recycled++;
+      else _toast(res.reason, 'error');
     });
 
     if (recycled > 0) {
@@ -170,23 +179,31 @@ const ExchangeUI = (() => {
       if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('exchange', 'card_recycled');
 
       // Boiling animation
-      const emoji = document.getElementById('cauldron-emoji');
-      if (emoji) {
-        emoji.classList.add('boiling');
-        setTimeout(() => emoji.classList.remove('boiling'), 1200);
+      const cauldron = document.getElementById('cauldron-emoji');
+      if (cauldron) {
+        cauldron.classList.add('boiling');
+        setTimeout(() => cauldron.classList.remove('boiling'), 1200);
+      }
+
+      // Update cauldron hint
+      const hint = document.getElementById('cauldron-hint');
+      if (hint) {
+        hint.textContent = '✨ Переработка завершена!';
+        setTimeout(() => {
+          if (hint) hint.textContent = 'Выбери карты слева — брось в котёл';
+        }, 2000);
       }
     }
 
     renderCards();
     renderQueue();
 
-    // Sync barracks if open
     if (typeof BarracksUI !== 'undefined' && BarracksUI.render) {
       BarracksUI.render();
     }
   }
 
-  // ── Init (called by _showTab after buildHTML is injected) ─────
+  // ── Init ──────────────────────────────────────────────────────
 
   function render() {
     _selected = [];
