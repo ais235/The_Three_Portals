@@ -57,19 +57,20 @@ select { font-family: inherit; }
 
 /* ── GAME LOGO ─────────────────────────────────────────────── */
 #game-logo {
-  position: fixed; top: 12px; left: 16px;
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
   z-index: 1000;
   font-size: 15px; font-weight: 500;
   color: rgba(255,255,255,.85);
   text-shadow: 0 2px 8px rgba(0,0,0,.8);
   cursor: pointer;
   -webkit-user-select: none; user-select: none;
-  padding: 6px 12px;
+  padding: 6px 16px;
   background: rgba(0,0,0,.45);
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,.12);
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   transition: background .15s;
+  white-space: nowrap;
 }
 #game-logo:hover { background: rgba(0,0,0,.65); }
 
@@ -111,6 +112,17 @@ select { font-family: inherit; }
   border-color: rgba(212,175,55,.4);
   color: #FAC775; transform: translateX(4px);
 }
+.mm-btn-home {
+  margin-top: 6px;
+  border-color: rgba(255,80,80,.25) !important;
+  color: rgba(255,160,160,.7) !important;
+}
+.mm-btn-home:hover {
+  background: rgba(255,60,60,.12) !important;
+  border-color: rgba(255,80,80,.5) !important;
+  color: #ffaaaa !important;
+}
+
 .mm-version {
   margin-top: 24px; font-size: 11px;
   color: rgba(255,255,255,.2);

@@ -459,6 +459,13 @@ const App = {
     alert('Fantasy Card Quest · v0.1\n\nТактическая карточная RPG');
   },
 
+  goHome() {
+    const overlay = document.getElementById('main-menu-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    document.getElementById('hud-resources').classList.add('hidden');
+    this.showScreen('home');
+  },
+
   startTestBattle() {
     this.showScreen('battle');
   },
@@ -476,6 +483,13 @@ const App = {
     if (target) target.classList.remove('hidden');
 
     this.updateHUD();
+
+    // Show/hide HUD based on screen
+    const hud = document.getElementById('hud-resources');
+    if (hud) {
+      if (screenId === 'home') hud.classList.add('hidden');
+      else hud.classList.remove('hidden');
+    }
 
     switch (screenId) {
       case 'battle':
