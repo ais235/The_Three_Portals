@@ -114,13 +114,14 @@ const VillageUI = (() => {
     if (_portalResizeObs)     { _portalResizeObs.disconnect(); _portalResizeObs = null; }
     if (_shopTimerInterval)   { clearInterval(_shopTimerInterval);   _shopTimerInterval   = null; }
     if (_councilTimerInterval){ clearInterval(_councilTimerInterval); _councilTimerInterval = null; }
-    content.classList.toggle('temple-active',  id === 'temple');
-    content.classList.toggle('portal-active',  id === 'portal');
-    content.classList.toggle('shop-active',    id === 'shop');
-    content.classList.toggle('council-active', id === 'council');
+    content.classList.toggle('temple-active',   id === 'temple');
+    content.classList.toggle('portal-active',   id === 'portal');
+    content.classList.toggle('shop-active',     id === 'shop');
+    content.classList.toggle('council-active',  id === 'council');
+    content.classList.toggle('exchange-active', id === 'exchange');
     switch (id) {
       case 'portal':   content.innerHTML = _buildPortalHTML();   _attachPortalEvents(); break;
-      case 'exchange': content.innerHTML = _buildExchangeHTML(); UnitCard.attachCardClicks(content); break;
+      case 'exchange': content.innerHTML = ExchangeUI.buildHTML(); ExchangeUI.render(); break;
       case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
       case 'shop':     content.innerHTML = _buildShopHTML();     _attachShopEvents(); break;
       case 'council':  content.innerHTML = _buildCouncilHTML();  _attachCouncilEvents(); break;
