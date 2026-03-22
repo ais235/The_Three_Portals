@@ -1117,35 +1117,44 @@ select { font-family: inherit; }
 
 /* ── Exchange grid ──────────────────────────────────────────── */
 .exchange-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 8px;
-  max-height: 420px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0;
+  max-height: 520px;
   overflow-y: auto;
 }
 .v-empty { color: var(--text-dim); font-style: italic; font-size: 0.85rem; }
 
-.exchange-card {
+/* Обёртка новой карточки в обменнике */
+.exchange-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 6px;
-  background: var(--bg-card-2);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
+  gap: 6px;
+}
+.exchange-item .fc { cursor: default; }
+.ec-yield {
+  font-size: 0.65rem; color: var(--text-dim);
+  display: flex; align-items: center; gap: 3px;
+}
+.ec-recycle-btn {
+  width: 100%;
+  padding: 5px 0;
+  background: rgba(200,50,50,0.15);
+  border: 1px solid rgba(200,50,50,0.5);
+  border-radius: 7px;
+  color: #f88;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.18s;
-  text-align: center;
+  transition: background .15s;
 }
-.exchange-card:hover {
+.ec-recycle-btn:hover {
+  background: rgba(200,50,50,0.35);
   border-color: #cc4444;
-  background: rgba(200,50,50,0.08);
+  color: #fff;
 }
-.ec-icon  { font-size: 1.6rem; }
-.ec-name  { font-size: 0.68rem; font-weight: 700; line-height: 1.2; }
-.ec-stars { font-size: 0.7rem; color: var(--text-accent); }
-.ec-yield { font-size: 0.65rem; color: var(--text-dim); display: flex; align-items: center; gap: 3px; }
 
 /* ── Portal Modal ───────────────────────────────────────────── */
 .portal-modal {
@@ -1768,10 +1777,16 @@ select { font-family: inherit; }
 .portal-result-card {
   background: linear-gradient(160deg, #1a0f2e, #0f0820);
   border: 2px solid rgba(212,175,55,.45);
-  border-radius: 18px; padding: 28px 24px;
+  border-radius: 18px; padding: 24px 20px;
   text-align: center; max-width: 320px; width: 90%;
   animation: card-appear .4s cubic-bezier(.175,.885,.32,1.275) both;
 }
+/* Мини-карточка внутри результата портала */
+.portal-result-card .fc {
+  margin: 0 auto;
+  cursor: default;
+}
+.portal-result-card .fc:hover { transform: none; box-shadow: none; }
 @keyframes card-appear {
   from { transform: scale(.5); opacity: 0; }
   to   { transform: scale(1);  opacity: 1; }
@@ -1821,23 +1836,31 @@ select { font-family: inherit; }
 .shop-refresh-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-main); }
 
 .shop-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  padding: 4px 0;
 }
 
 .shop-item {
   background: var(--bg-card);
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 10px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   text-align: center;
   transition: all 0.2s;
+  /* отключаем трансформацию на .fc внутри — у shop-item своя рамка */
 }
+.shop-item .fc {
+  cursor: default;
+  border: none;
+  border-radius: 8px;
+}
+.shop-item .fc:hover { transform: none; box-shadow: none; }
 .shop-item:not(.shop-item-sold):hover {
   border-color: #5a6a8a;
   transform: translateY(-2px);
@@ -2009,9 +2032,14 @@ select { font-family: inherit; }
 .lib-search:focus { border-color: #5a5a9a; }
 
 .lib-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  display: block;
+}
+/* Грид мини-карточек союзников в библиотеке */
+.lib-cards-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  padding: 4px 0;
 }
 
 .lib-card {

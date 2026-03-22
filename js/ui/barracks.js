@@ -80,54 +80,13 @@ const BarracksUI = (() => {
     const filtered = filterAllies();
     if (countEl) countEl.textContent = filtered.length;
 
-    grid.innerHTML = '';
-    filtered.forEach(ally => grid.appendChild(buildCard(ally)));
+    grid.innerHTML = filtered.map(ally => {
+      const isOwned = GameState.isUnlocked(ally.id);
+      return UnitCard.buildMiniCard(ally, { showLocked: !isOwned });
+    }).join('');
+
+    UnitCard.attachCardClicks(grid);
   }
-
-  // ── Card building ──────────────────────────────────────────────
-
-  function buildCard(ally) {
-    const isUnlocked = GameState.isUnlocked(ally.id);
-    const lvl        = isUnlocked ? GameState.getCardLevel(ally.id) : null;
-    const equippedId = isUnlocked ? GameState.getEquipped(ally.id) : null;
-    const weapon     = equippedId ? WEAPONS.find(w => w.id === equippedId) : null;
-    const race       = RACES[ally.race] || { label: ally.race, color: '#888', bg: '#222' };
-    const cls        = CLASSES[ally.class] || { label: ally.class };
-
-    const card = document.createElement('div');
-    card.className = `coll-card${weapon ? ' equipped' : ''}${isUnlocked ? '' : ' locked'}`;
-    card.style.borderBottomColor = isUnlocked ? getClassColor(ally.class) : '#333';
-
-    const stars    = lvl ? '★'.repeat(lvl.stars) : buildStarRange(ally.starRange);
-    const levelStr = lvl ? `Ур.${lvl.powerLevel}` : '';
-
-    card.innerHTML = `
-      ${!isUnlocked ? '<div class="lock-icon">🔒</div>' : ''}
-      <div class="coll-card-icon" style="${isUnlocked ? '' : 'filter:grayscale(1);opacity:.45'}">${ally.icon || '⚔️'}</div>
-      <div class="coll-card-name">${ally.name}</div>
-      <span class="coll-card-race" style="background:${race.bg};color:${race.color};">${race.label}</span>
-      <div class="coll-card-class">${cls.label}</div>
-      <div class="coll-card-stars">${stars}${levelStr ? ` <small style="color:#888;font-size:0.65rem;">${levelStr}</small>` : ''}</div>
-      ${weapon ? `<div class="coll-card-equip">🗡️ ${weapon.name}</div>` : ''}
-      ${!isUnlocked ? '<div class="locked-label">Открыть в Деревне</div>' : ''}
-    `;
-
-    card.addEventListener('click', () => showCardDetail(ally.id));
-
-    return card;
-  }
-
-  function buildStarRange([min, max]) {
-    return min === max ? '★'.repeat(min) : `★${min}–★${max}`;
-  }
-
-  const CLASS_COLORS = {
-    tank:'#185FA5', spearman:'#534AB7', damage:'#7a3ab7',
-    archer:'#3B6D11', crossbowman:'#0F6E56',
-    mage_aoe:'#BA7517', mage_single:'#7B3F00',
-    mage_healer:'#1a6b6b', mage_buffer:'#5a4a1e', mage_debuff:'#4a1a4a',
-  };
-  function getClassColor(cls) { return CLASS_COLORS[cls] || '#444'; }
 
   // ── Card modals ────────────────────────────────────────────────
 

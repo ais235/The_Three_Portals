@@ -114,9 +114,9 @@ const VillageUI = (() => {
     content.classList.toggle('portal-active', id === 'portal');
     switch (id) {
       case 'portal':   content.innerHTML = _buildPortalHTML();   _attachPortalEvents(); break;
-      case 'exchange': content.innerHTML = _buildExchangeHTML(); break;
+      case 'exchange': content.innerHTML = _buildExchangeHTML(); UnitCard.attachCardClicks(content); break;
       case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
-      case 'shop':     content.innerHTML = _buildShopHTML();     break;
+      case 'shop':     content.innerHTML = _buildShopHTML();     UnitCard.attachCardClicks(content); break;
       case 'council':  content.innerHTML = _buildCouncilHTML();  break;
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
     }
@@ -252,20 +252,9 @@ const VillageUI = (() => {
       title = `+1 пыль ★${result.stars}`;
       sub   = 'В пуле нет подходящих карт';
     } else {
-      const ally    = result.ally;
-      const race    = RACES[ally.race] || { label: ally.race, color:'#888', bg:'#333' };
-      const starsStr = '★'.repeat(result.stars) + '☆'.repeat(5 - result.stars);
-      inner = `
-        <div style="font-size:52px;margin:8px 0">${ally.icon || '⚔️'}</div>
-        <div style="font-size:15px;font-weight:700;color:#e8d5a0">${ally.name}</div>
-        <div style="color:#ffe066;font-size:1.15rem;margin:6px 0">${starsStr}</div>
-        <div>
-          <span style="background:${race.bg};color:${race.color};
-                       padding:2px 10px;border-radius:99px;font-size:0.72rem">
-            ${race.label}
-          </span>
-        </div>`;
-      title = result.isNew ? '✦ Новый герой!' : '↺ Уже есть в коллекции';
+      const ally = result.ally;
+      inner = UnitCard.buildMiniCard(ally, { showLocked: false });
+      title = result.isNew ? '✦ Новый герой!' : '↺ Уже есть в казарме';
       sub   = result.isNew ? ally.name : `+1 пыль ★${result.stars} добавлена`;
     }
 
@@ -273,6 +262,8 @@ const VillageUI = (() => {
     document.getElementById('portal-result-title').textContent = title;
     document.getElementById('portal-result-sub').textContent   = sub;
     overlay.style.display = 'flex';
+    // Навешиваем клик для просмотра детали карты
+    UnitCard.attachCardClicks(document.getElementById('portal-result-inner'));
   }
 
   function closePortalResult() {
@@ -324,11 +315,10 @@ const VillageUI = (() => {
       const lvl   = GameState.getCardLevel(id);
       const stars = lvl ? lvl.stars : ally.starRange[0];
       return `
-        <div class="exchange-card" onclick="VillageUI.confirmRecycle('${id}')">
-          <div class="ec-icon">${ally.icon || '⚔️'}</div>
-          <div class="ec-name">${ally.name}</div>
-          <div class="ec-stars">★${stars}</div>
+        <div class="exchange-item">
+          ${UnitCard.buildMiniCard(ally, {})}
           <div class="ec-yield">→ <span class="dust-chip star-${stars} small">1 пыль ★${stars}</span></div>
+          <button class="ec-recycle-btn" onclick="VillageUI.confirmRecycle('${id}')">🔄 Переработать</button>
         </div>`;
     }).join('');
     return `
@@ -483,13 +473,9 @@ const VillageUI = (() => {
       if (item.type === 'card') {
         const ally  = ALLIES.find(a => a.id === item.id);
         const owned = GameState.isUnlocked(item.id);
-        cardHTML = `
-          <div class="shop-item-icon">${ally?.icon || '⚔️'}</div>
-          <div class="shop-item-name">${ally?.name || item.id}</div>
-          <div class="shop-item-meta">
-            <span class="shop-stars">${'★'.repeat(item.stars)}</span>
-            ${owned ? '<span class="shop-owned-tag">Есть</span>' : ''}
-          </div>`;
+        cardHTML = ally
+          ? UnitCard.buildMiniCard(ally, { showLocked: !owned })
+          : `<div class="shop-item-icon">⚔️</div><div class="shop-item-name">${item.id}</div>`;
       } else {
         const wpn = (typeof WEAPONS !== 'undefined') && WEAPONS.find(w => w.id === item.id);
         const owned = GameState.hasWeapon(item.id);
@@ -649,45 +635,13 @@ const VillageUI = (() => {
       !q || a.name.toLowerCase().includes(q) || a.race.toLowerCase().includes(q) || a.class.toLowerCase().includes(q)
     );
     if (!list.length) return '<div class="v-empty">Ничего не найдено</div>';
-    return list.map(ally => {
-      const owned  = GameState.isUnlocked(ally.id);
-      const lvl    = GameState.getCardLevel(ally.id);
-      const stars  = lvl ? lvl.stars : ally.starRange[0];
-      const power  = lvl ? lvl.powerLevel : 1;
-      const race   = RACES[ally.race] || { label: ally.race, color:'#888', bg:'#222' };
-      const cls    = CLASSES[ally.class] || { label: ally.class };
-      const b      = ally.base;
-      return `
-        <div class="lib-card ${owned ? 'lib-owned' : 'lib-not-owned'}">
-          <div class="lib-card-head">
-            <span class="lib-icon">${ally.icon || '⚔️'}</span>
-            <div class="lib-card-title">
-              <div class="lib-name">${ally.name}</div>
-              <div class="lib-meta">
-                <span style="background:${race.bg};color:${race.color};padding:1px 6px;border-radius:99px;font-size:0.65rem;">${race.label}</span>
-                <span class="lib-cls">${cls.label}</span>
-                ${owned ? `<span class="lib-owned-badge">★${stars} Ур.${power}</span>` : '<span class="lib-locked-badge">🔒</span>'}
-              </div>
-            </div>
-          </div>
-          <div class="lib-stats">
-            ${_statRow('HP', calcStat(b.hp||0, stars, power))}
-            ${b.meleeAtk  ? _statRow('Ближн. атк', calcStat(b.meleeAtk, stars, power)) : ''}
-            ${b.rangeAtk  ? _statRow('Дальн. атк', calcStat(b.rangeAtk, stars, power)) : ''}
-            ${b.magic     ? _statRow('Магия',      calcStat(b.magic,    stars, power)) : ''}
-            ${_statRow('Инициатива', calcInitiative(b.initiative, stars, power))}
-          </div>
-          ${ally.abilities && ally.abilities.length ? `
-            <div class="lib-abilities">
-              ${ally.abilities.map(ab => `
-                <div class="lib-ability">
-                  <span class="lib-ab-name">${ab.name}</span>
-                  <span class="lib-ab-desc">${ab.desc}</span>
-                </div>`).join('')}
-            </div>` : ''}
-          ${ally.lore ? `<div class="lib-lore">${Object.values(ally.lore)[0]}</div>` : ''}
-        </div>`;
-    }).join('');
+    // Используем универсальный buildMiniCard; клики навешиваются в _attachLibraryEvents
+    return `<div class="lib-cards-grid">${
+      list.map(ally => {
+        const isOwned = GameState.isUnlocked(ally.id);
+        return UnitCard.buildMiniCard(ally, { showLocked: !isOwned });
+      }).join('')
+    }</div>`;
   }
 
   function _buildEnemiesLib(q) {
@@ -750,12 +704,18 @@ const VillageUI = (() => {
   function _attachLibraryEvents() {
     const input = document.getElementById('lib-search-input');
     if (input) input.focus();
+    // Клики на карточки союзников
+    const libContent = document.getElementById('lib-content');
+    if (libContent) UnitCard.attachCardClicks(libContent);
   }
 
   function libSwitch(tab) {
     _libTab = tab;
     const content = document.getElementById('lib-content');
-    if (content) content.innerHTML = _buildLibContent();
+    if (content) {
+      content.innerHTML = _buildLibContent();
+      UnitCard.attachCardClicks(content);
+    }
     document.querySelectorAll('.lib-tab-btn').forEach(b =>
       b.classList.toggle('active', b.textContent.includes(tab === 'allies' ? 'Союзники' : 'Враги'))
     );
@@ -764,7 +724,10 @@ const VillageUI = (() => {
   function libSearch(val) {
     _libSearch = val;
     const content = document.getElementById('lib-content');
-    if (content) content.innerHTML = _buildLibContent();
+    if (content) {
+      content.innerHTML = _buildLibContent();
+      UnitCard.attachCardClicks(content);
+    }
   }
 
   // ── Toast ─────────────────────────────────────────────────────

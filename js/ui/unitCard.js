@@ -264,5 +264,5 @@ function attachCardClicks(container = document) {
   });
 }
 
-// Публичный API
-const UnitCard = { buildMiniCard, showCardDetail, closeCardDetail, doUpgrade, attachCardClicks };
+// Публичный API — явно на window для надёжного доступа из других файлов
+window.UnitCard = { buildMiniCard, showCardDetail, closeCardDetail, doUpgrade, attachCardClicks };
