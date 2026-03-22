@@ -1812,102 +1812,242 @@ select { font-family: inherit; }
 
 /* ── SHOP ────────────────────────────────────────────────────── */
 
-.shop-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.shop-refresh-btn {
-  background: rgba(255,255,255,0.06);
-  border: 2px solid #5a5a8a;
-  border-radius: var(--radius-sm);
-  color: var(--text-dim);
-  padding: 7px 14px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.shop-refresh-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-main); }
+/* shop-active: убираем отступы чтобы shop-wrap занял весь контент */
+.v-tab-content.shop-active { padding: 0; overflow: hidden; }
 
-.shop-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 4px 0;
+.shop-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
-.shop-item {
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 8px;
+/* Фоновое изображение */
+.shop-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(0.45);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Весь UI поверх фона */
+.shop-ui {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-  transition: all 0.2s;
-  /* отключаем трансформацию на .fc внутри — у shop-item своя рамка */
+  padding: 10px 20px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,.4) transparent;
+  z-index: 1;
 }
-.shop-item .fc {
-  cursor: default;
-  border: none;
-  border-radius: 8px;
-}
-.shop-item .fc:hover { transform: none; box-shadow: none; }
-.shop-item:not(.shop-item-sold):hover {
-  border-color: #5a6a8a;
-  transform: translateY(-2px);
-}
-.shop-item-sold { opacity: 0.45; }
 
-.shop-item-icon { font-size: 2rem; }
-.shop-item-name { font-size: 0.78rem; font-weight: 700; color: var(--text-main); }
-.shop-item-meta { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; justify-content: center; }
-.shop-stars { font-size: 0.72rem; color: var(--text-accent); letter-spacing: 1px; }
-.shop-owned-tag {
-  font-size: 0.62rem; background: rgba(90,250,90,0.12);
-  border: 1px solid #3a7a3a; border-radius: 99px; padding: 1px 6px; color: #8afa8a;
+/* Шапка: NPC + таймер/кнопка */
+.shop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  gap: 12px;
 }
-.shop-rarity {
-  font-size: 0.65rem; border-radius: 99px; padding: 1px 7px; font-weight: 700;
+.shop-npc-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
 }
-.rarity-common  { background: rgba(136,135,128,0.2); border: 1px solid #888; color: #aaa; }
-.rarity-rare    { background: rgba(74,158,255,0.15); border: 1px solid #4a9eff; color: #6af; }
-.rarity-epic    { background: rgba(168,85,247,0.15); border: 1px solid #a855f7; color: #c084fc; }
-.rarity-legendary { background: rgba(245,158,11,0.15); border: 1px solid #f59e0b; color: #fbbf24; }
-
-.shop-price { font-size: 0.82rem; font-weight: 700; color: var(--text-accent); }
-
-.shop-buy-btn {
-  width: 100%;
-  padding: 7px;
-  border-radius: var(--radius-sm);
-  border: 2px solid #4a7a4a;
-  background: linear-gradient(135deg, #1a3a1a, #2a5a2a);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 700;
+.shop-npc-img {
+  height: 130px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.6));
+  flex-shrink: 0;
+}
+.shop-bubble {
+  background: rgba(0,0,0,.75);
+  border: 1.5px solid rgba(212,175,55,.35);
+  border-radius: 14px 14px 14px 2px;
+  padding: 10px 16px;
+  max-width: 280px;
+  font-size: 13px;
+  color: rgba(255,255,255,.85);
+  font-style: italic;
+  line-height: 1.5;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.shop-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.shop-timer {
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  white-space: nowrap;
+}
+.shop-refresh-btn {
+  font-size: 12px;
+  padding: 7px 16px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.7);
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.18s;
-  margin-top: 4px;
+  transition: background .15s, border-color .15s, color .15s;
+  white-space: nowrap;
 }
-.shop-buy-btn:hover:not(.disabled) {
-  background: linear-gradient(135deg, #2a5a2a, #3a7a3a);
+.shop-refresh-btn:hover {
+  background: rgba(212,175,55,.2);
+  border-color: #D4AF37;
+  color: #FAC775;
 }
-.shop-buy-btn.disabled {
-  background: rgba(255,255,255,0.04);
-  border-color: #2a2a4a;
-  color: var(--text-dim);
+
+/* Заголовок секции */
+.shop-section-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.45);
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+
+/* ── Ряд юнитов ── */
+.shop-units-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* Обёртка юнита: карточка + футер */
+.shop-unit-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.shop-unit-wrap .fc {
+  border-radius: 14px 14px 0 0;
+  cursor: default;
+}
+.shop-unit-wrap .fc:hover { transform: none; box-shadow: none; }
+
+.shop-unit-footer {
+  width: 200px;
+  background: rgba(0,0,0,.8);
+  border: 2px solid var(--unit-border, rgba(255,255,255,.15));
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+}
+.shop-unit-price {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #FAC775;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.shop-buy-btn {
+  width: 100%;
+  padding: 8px;
+  background: rgba(26,74,26,.9);
+  color: #7af07a;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.shop-buy-btn:hover:not(:disabled) { background: rgba(30,100,30,.95); }
+.shop-buy-btn:disabled {
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.3);
   cursor: not-allowed;
 }
+
+/* ── Ряд оружия ── */
+.shop-weapons-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.weapon-shop-card {
+  width: 220px;
+  border-radius: 14px;
+  background: rgba(10,8,30,.9);
+  border: 2px solid var(--wc-border, rgba(255,255,255,.2));
+  overflow: hidden;
+}
+.wsc-top {
+  padding: 14px 14px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.wsc-icon { font-size: 38px; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+.wsc-info { flex: 1; min-width: 0; }
+.wsc-rarity {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+  margin-bottom: 5px;
+}
+.wsc-name { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.wsc-bonus { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5; }
+.wsc-special {
+  font-size: 10px;
+  color: rgba(212,175,55,.8);
+  font-style: italic;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.wsc-divider { height: 1px; background: rgba(255,255,255,.08); }
+.wsc-bottom {
+  padding: 8px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.wsc-price { font-size: 14px; font-weight: 500; color: #FAC775; }
+.wsc-buy-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(26,74,26,.9);
+  color: #7af07a;
+  border: 1px solid rgba(58,160,58,.4);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.wsc-buy-btn:hover:not(:disabled) { background: rgba(30,100,30,.95); }
+.wsc-buy-btn:disabled {
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.3);
+  cursor: not-allowed;
+  border-color: transparent;
+}
+
+/* Rarity badge colors (legacy — used in inventory/barracks) */
+.rarity-common    { background: rgba(136,135,128,0.2); border: 1px solid #888; color: #aaa; }
+.rarity-rare      { background: rgba(74,158,255,0.15);  border: 1px solid #4a9eff; color: #6af; }
+.rarity-epic      { background: rgba(168,85,247,0.15);  border: 1px solid #a855f7; color: #c084fc; }
+.rarity-legendary { background: rgba(245,158,11,0.15);  border: 1px solid #f59e0b; color: #fbbf24; }
 
 /* ── COUNCIL (QUESTS) ────────────────────────────────────────── */
 

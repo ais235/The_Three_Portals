@@ -10,6 +10,7 @@ const VillageUI = (() => {
   let _libSearch = '';
   let _templeResizeObs = null;
   let _portalResizeObs = null;
+  let _shopTimerInterval = null;
 
   // ── Temple: тестовый режим — все артефакты видны ────────────────
   // Поставь false чтобы вернуть реальное состояние из GameState
@@ -108,15 +109,17 @@ const VillageUI = (() => {
   function _showTab(id) {
     const content = document.getElementById('v-tab-content');
     if (!content) return;
-    if (_templeResizeObs) { _templeResizeObs.disconnect(); _templeResizeObs = null; }
-    if (_portalResizeObs) { _portalResizeObs.disconnect(); _portalResizeObs = null; }
+    if (_templeResizeObs)   { _templeResizeObs.disconnect(); _templeResizeObs = null; }
+    if (_portalResizeObs)   { _portalResizeObs.disconnect(); _portalResizeObs = null; }
+    if (_shopTimerInterval) { clearInterval(_shopTimerInterval); _shopTimerInterval = null; }
     content.classList.toggle('temple-active', id === 'temple');
     content.classList.toggle('portal-active', id === 'portal');
+    content.classList.toggle('shop-active',   id === 'shop');
     switch (id) {
       case 'portal':   content.innerHTML = _buildPortalHTML();   _attachPortalEvents(); break;
       case 'exchange': content.innerHTML = _buildExchangeHTML(); UnitCard.attachCardClicks(content); break;
       case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
-      case 'shop':     content.innerHTML = _buildShopHTML();     UnitCard.attachCardClicks(content); break;
+      case 'shop':     content.innerHTML = _buildShopHTML();     _attachShopEvents(); break;
       case 'council':  content.innerHTML = _buildCouncilHTML();  break;
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
     }
@@ -462,60 +465,137 @@ const VillageUI = (() => {
   // TAB: SHOP
   // ================================================================
 
-  function _buildShopHTML() {
-    const items    = GameState.getShopItems();
-    const freeUsed = !!GameState._shopFreeUsed; // exposed from GameState
+  // ── SHOP ─────────────────────────────────────────────────────────
 
-    const itemsHTML = items.map((item, idx) => {
-      const canBuy   = !item.purchased && GameState.coins >= item.price;
+  const _NPC_PHRASES = [
+    '"Добро пожаловать! Сегодня особые цены!"',
+    '"Свежий товар только что завезли!"',
+    '"Для героев — лучшее снаряжение!"',
+    '"Не упусти редкий товар!"',
+    '"Хм, кажется тебе нужен именно этот герой..."',
+    '"Золото не спрячешь в кармане навсегда!"',
+  ];
+
+  const _WEAP_LABELS = {
+    meleeAtk:'Ближн.атк', meleeDef:'Ближн.защ',
+    rangeAtk:'Дальн.атк', rangeDef:'Дальн.защ',
+    magic:'Магия', magicDef:'Маг.защ', hp:'HP', mana:'Мана', initiative:'Иниц.',
+  };
+
+  const _RARITY_COLORS = {
+    common:    { bg:'#D3D1C7', fg:'#444441', border:'#B4B2A9' },
+    rare:      { bg:'#B5D4F4', fg:'#0C447C', border:'#85B7EB' },
+    epic:      { bg:'#CECBF6', fg:'#26215C', border:'#AFA9EC' },
+    legendary: { bg:'#FAC775', fg:'#412402', border:'#EF9F27' },
+  };
+
+  function _buildShopHTML() {
+    const items     = GameState.getShopItems();
+    const cardItems = items.map((item, idx) => ({ ...item, _idx: idx })).filter(i => i.type === 'card');
+    const weapItems = items.map((item, idx) => ({ ...item, _idx: idx })).filter(i => i.type === 'weapon');
+    const phrase    = _NPC_PHRASES[Math.floor(Math.random() * _NPC_PHRASES.length)];
+
+    const unitsHTML = cardItems.map(item => {
+      const ally        = ALLIES.find(a => a.id === item.id);
+      if (!ally) return '';
+      const isOwned     = GameState.isUnlocked(item.id);
       const isPurchased = item.purchased;
-      let   cardHTML = '';
-      if (item.type === 'card') {
-        const ally  = ALLIES.find(a => a.id === item.id);
-        const owned = GameState.isUnlocked(item.id);
-        cardHTML = ally
-          ? UnitCard.buildMiniCard(ally, { showLocked: !owned })
-          : `<div class="shop-item-icon">⚔️</div><div class="shop-item-name">${item.id}</div>`;
-      } else {
-        const wpn = (typeof WEAPONS !== 'undefined') && WEAPONS.find(w => w.id === item.id);
-        const owned = GameState.hasWeapon(item.id);
-        cardHTML = `
-          <div class="shop-item-icon">${wpn?.icon || '🗡️'}</div>
-          <div class="shop-item-name">${wpn?.name || item.id}</div>
-          <div class="shop-item-meta">
-            <span class="shop-rarity rarity-${item.rarity}">${item.rarity}</span>
-            ${owned ? '<span class="shop-owned-tag">Есть</span>' : ''}
-          </div>`;
-      }
+      const done        = isOwned || isPurchased;
+      const canAfford   = !done && GameState.coins >= item.price;
+      const borderColor = done ? '#3B6D11' : canAfford ? 'rgba(255,255,255,.2)' : 'rgba(200,50,50,.3)';
+      const btnText     = isPurchased ? '✓ Куплено' :
+                          isOwned     ? '✓ Уже в казарме' :
+                          canAfford   ? '⚔️ Нанять героя' : '💰 Недостаточно монет';
       return `
-        <div class="shop-item ${isPurchased ? 'shop-item-sold' : ''}">
-          ${cardHTML}
-          <div class="shop-price">💰 ${item.price}</div>
-          <button class="shop-buy-btn ${canBuy && !isPurchased ? '' : 'disabled'}"
-                  onclick="VillageUI.buyItem(${idx})"
-                  ${canBuy && !isPurchased ? '' : 'disabled'}>
-            ${isPurchased ? '✓ Куплено' : 'Купить'}
-          </button>
+        <div class="shop-unit-wrap">
+          ${UnitCard.buildMiniCard(ally, { showLocked: done })}
+          <div class="shop-unit-footer" style="--unit-border:${borderColor}">
+            <div class="shop-unit-price">${item.price} 💰</div>
+            <button class="shop-buy-btn" ${done || !canAfford ? 'disabled' : ''}
+                    onclick="VillageUI.buyItem(${item._idx})">
+              ${btnText}
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    const weaponsHTML = weapItems.map(item => {
+      const w = (typeof WEAPONS !== 'undefined') && WEAPONS.find(wpn => wpn.id === item.id);
+      if (!w) return '';
+      const isOwned   = GameState.hasWeapon(item.id) || item.purchased;
+      const canAfford = !isOwned && GameState.coins >= item.price;
+      const rar       = _RARITY_COLORS[w.rarity] || _RARITY_COLORS.common;
+      const bonuses   = Object.entries(w.bonuses || {})
+        .map(([k, v]) => `+${v} ${_WEAP_LABELS[k] || k}`).join(' · ');
+      return `
+        <div class="weapon-shop-card" style="--wc-border:${rar.border}">
+          <div class="wsc-top">
+            <span class="wsc-icon">${w.icon || '🗡️'}</span>
+            <div class="wsc-info">
+              <span class="wsc-rarity" style="background:${rar.bg};color:${rar.fg}">
+                ${(typeof RARITIES !== 'undefined' && RARITIES[w.rarity]?.label) || w.rarity}
+              </span>
+              <div class="wsc-name">${w.name}</div>
+              <div class="wsc-bonus">${bonuses}</div>
+              ${w.special ? `<div class="wsc-special">${w.special.desc || ''}</div>` : ''}
+            </div>
+          </div>
+          <div class="wsc-divider"></div>
+          <div class="wsc-bottom">
+            <span class="wsc-price">${item.price} 💰</span>
+            <button class="wsc-buy-btn" ${!canAfford ? 'disabled' : ''}
+                    onclick="VillageUI.buyItem(${item._idx})">
+              ${isOwned ? '✓ Есть' : canAfford ? '🛒 Купить' : 'Нет монет'}
+            </button>
+          </div>
         </div>`;
     }).join('');
 
     return `
-      <div class="v-section-title">🛒 Магазин</div>
-      <div class="shop-header">
-        <p class="v-section-desc">4 карты и 2 оружия — обновляется каждый день</p>
-        <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
-          🔄 Обновить${_getRefreshCostLabel()}
-        </button>
-      </div>
-      <div class="shop-grid">${itemsHTML}</div>`;
+      <div class="shop-wrap">
+        <img class="shop-bg" src="assets/shop_bg.jpg" alt="">
+        <div class="shop-ui">
+          <div class="shop-header">
+            <div class="shop-npc-area">
+              <img src="assets/shop_npc.png" class="shop-npc-img" alt="">
+              <div class="shop-bubble" id="shop-bubble">${phrase}</div>
+            </div>
+            <div class="shop-controls">
+              <div class="shop-timer" id="shop-timer">🕐 Обновление через: --:--:--</div>
+              <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
+                🔄 Обновить (200 💰)
+              </button>
+            </div>
+          </div>
+
+          <div class="shop-section-label">⚔️ Герои</div>
+          <div class="shop-units-row" id="shop-units-row">${unitsHTML}</div>
+
+          <div class="shop-section-label">🗡️ Оружие и снаряжение</div>
+          <div class="shop-weapons-row" id="shop-weapons-row">${weaponsHTML}</div>
+        </div>
+      </div>`;
   }
 
-  function _getRefreshCostLabel() {
-    // We expose shopFreeRefreshUsed through a check call
-    const items = GameState.getShopItems(); // triggers _checkShopRefresh
-    // Simple: try refreshing with force=false first. If it fails means free was used.
-    // Better: just always show cost as "бесплатно / 200м"
-    return ' (200 💰)'; // simplified - show cost always since free tracking is complex here
+  function _attachShopEvents() {
+    UnitCard.attachCardClicks(document.getElementById('shop-units-row'));
+
+    // Таймер до полуночи (ежедневное обновление)
+    if (_shopTimerInterval) clearInterval(_shopTimerInterval);
+    function _updateShopTimer() {
+      const el = document.getElementById('shop-timer');
+      if (!el) { clearInterval(_shopTimerInterval); return; }
+      const now  = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diffMs  = midnight - now;
+      const h = String(Math.floor(diffMs / 3_600_000)).padStart(2, '0');
+      const m = String(Math.floor((diffMs % 3_600_000) / 60_000)).padStart(2, '0');
+      const s = String(Math.floor((diffMs % 60_000) / 1000)).padStart(2, '0');
+      el.textContent = `🕐 Обновление через: ${h}:${m}:${s}`;
+    }
+    _updateShopTimer();
+    _shopTimerInterval = setInterval(_updateShopTimer, 1000);
   }
 
   function buyItem(idx) {
