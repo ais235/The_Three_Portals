@@ -13,7 +13,7 @@ const NPCSystem = (() => {
       id: 'portal',
       name: 'Астра',
       title: 'Хранительница Портала',
-      image: 'assets/npcs/portal_keeper.png',
+      image: 'assets/npcs/portal_master.png',
       position: 'right',
       idle: [
         'Каждый свиток — судьба, запечатанная в пергаменте.',
@@ -133,7 +133,7 @@ const NPCSystem = (() => {
       id: 'shop',
       name: 'Карлос',
       title: 'Торговец всем полезным',
-      image: 'assets/shop_npc.png',
+      image: 'assets/npcs/merchant.png',
       position: 'left',
       idle: [
         'Лучший товар — у меня, лучшая цена — тоже!',
