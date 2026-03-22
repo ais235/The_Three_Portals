@@ -102,7 +102,7 @@ const VillageMapUI = (() => {
       pos:      { left:'70%', top:'60%', width:'23%', height:'21%' },
       tipDir:   'above',
       tipAlign: 'end',
-      onClick:  () => App.showScreen('collection'),
+      onClick:  () => App.showScreen('barracks'),
     },
   ];
 

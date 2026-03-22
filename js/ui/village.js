@@ -281,7 +281,7 @@ const VillageUI = (() => {
     _renderBalance();
     // Перестраиваем портал чтобы обновить доступность свитков
     _showTab('portal');
-    if (CollectionUI) CollectionUI.render();
+    if (BarracksUI) BarracksUI.render();
   }
 
   function _fmtOdds(weights) {
@@ -304,7 +304,7 @@ const VillageUI = (() => {
       _renderBalance();
       if (_tab === 'portal')   _showTab('portal');
       if (_tab === 'exchange') _showTab('exchange');
-      if (CollectionUI) CollectionUI.render();
+      if (BarracksUI) BarracksUI.render();
     });
   }
 
@@ -365,7 +365,7 @@ const VillageUI = (() => {
       showToast(`Переработано → +1 пыль ★${result.dustStar}`, 'success');
       _renderBalance();
       _showTab('exchange');
-      if (CollectionUI) CollectionUI.render();
+      if (BarracksUI) BarracksUI.render();
     } else {
       showToast(result.reason, 'error');
     }
@@ -538,7 +538,7 @@ const VillageUI = (() => {
       showToast('Куплено!', 'success');
       _renderBalance();
       _showTab('shop');
-      if (CollectionUI) CollectionUI.render();
+      if (BarracksUI) BarracksUI.render();
       if (InventoryUI)  InventoryUI.render();
     } else {
       showToast(result.reason, 'error');

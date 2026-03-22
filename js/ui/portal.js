@@ -189,7 +189,7 @@ const Portal = (() => {
     const cb = actEl?._onComplete;
     if (cb) cb();
 
-    if (CollectionUI) CollectionUI.render();
+    if (BarracksUI) BarracksUI.render();
   }
 
   return { SCROLL_TYPES, rollCard, openScroll, closePortal };

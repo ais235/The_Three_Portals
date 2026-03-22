@@ -17,7 +17,7 @@
         <button class="nav-btn" data-screen="worldmap">🗺️ Карта</button>
         <button class="nav-btn" data-screen="villagemap">🏘 Деревня</button>
         <button class="nav-btn" data-screen="battle">⚔️ Бой</button>
-        <button class="nav-btn" data-screen="collection">📚 Коллекция</button>
+        <button class="nav-btn" data-screen="barracks">🏕️ Казарма</button>
         <button class="nav-btn" data-screen="inventory">🗡️ Инвентарь</button>
       </div>
     </nav>
@@ -42,9 +42,9 @@
             <span class="hb-icon">🏘</span>
             <span class="hb-text"><strong>Деревня</strong><small>Порталы, обмен, прокачка</small></span>
           </button>
-          <button class="home-btn" onclick="App.showScreen('collection')">
-            <span class="hb-icon">📚</span>
-            <span class="hb-text"><strong>Коллекция</strong><small>50 уникальных союзников</small></span>
+          <button class="home-btn" onclick="App.showScreen('barracks')">
+            <span class="hb-icon">🏕️</span>
+            <span class="hb-text"><strong>Казарма</strong><small>50 уникальных союзников</small></span>
           </button>
           <button class="home-btn" onclick="App.showScreen('inventory')">
             <span class="hb-icon">🗡️</span>
@@ -217,32 +217,32 @@
       </div>
     </div>
 
-    <!-- ── COLLECTION SCREEN ─────────────────────────────── -->
-    <div id="screen-collection" class="screen hidden">
+    <!-- ── BARRACKS SCREEN ───────────────────────────────── -->
+    <div id="screen-barracks" class="screen hidden">
       <div class="screen-header">
-        <h2>📚 Коллекция союзников</h2>
+        <h2>🏕️ Казарма</h2>
         <div class="filters">
-          <select id="filter-race"   onchange="CollectionUI.applyFilters()">
+          <select id="filter-race"   onchange="BarracksUI.applyFilters()">
             <option value="">🌍 Все расы</option>
           </select>
-          <select id="filter-class"  onchange="CollectionUI.applyFilters()">
+          <select id="filter-class"  onchange="BarracksUI.applyFilters()">
             <option value="">⚔️ Все классы</option>
           </select>
-          <select id="filter-stars"  onchange="CollectionUI.applyFilters()">
+          <select id="filter-stars"  onchange="BarracksUI.applyFilters()">
             <option value="">⭐ Все звёзды</option>
             <option value="1">★1</option><option value="2">★2</option>
             <option value="3">★3</option><option value="4">★4</option>
             <option value="5">★5</option>
           </select>
-          <select id="filter-locked" onchange="CollectionUI.applyFilters()">
+          <select id="filter-locked" onchange="BarracksUI.applyFilters()">
             <option value="all">🔓 Все карты</option>
             <option value="unlocked">✅ Открытые</option>
             <option value="locked">🔒 Закрытые</option>
           </select>
-          <div class="filter-count">Карт: <span id="card-count">50</span></div>
+          <div class="filter-count">Карт: <span id="barracks-card-count">50</span></div>
         </div>
       </div>
-      <div id="collection-grid" class="card-grid"></div>
+      <div id="barracks-grid" class="card-grid"></div>
     </div>
 
     <!-- ── INVENTORY SCREEN ──────────────────────────────── -->
@@ -316,7 +316,8 @@
   <script src="js/ui/battleLog.js"></script>
   <script src="js/ui/portal.js"></script>
   <script src="js/ui/village.js"></script>
-  <script src="js/ui/collection.js"></script>
+  <script src="js/ui/unitCard.js"></script>
+  <script src="js/ui/barracks.js"></script>
   <script src="js/ui/inventory.js"></script>
   <script src="js/ui/worldmap.js"></script>
   <script src="js/ui/squadSelect.js"></script>

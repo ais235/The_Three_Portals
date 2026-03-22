@@ -2945,3 +2945,382 @@ select { font-family: inherit; }
     transform: translateX(-50%) translateY(-52px) scale(0.80);
   }
 }
+
+/* ── UNIT CARD (.fc) ─────────────────────────────────────────── */
+
+/* Базовая мини-карточка */
+.fc {
+  display: flex;
+  flex-direction: column;
+  width: 162px;
+  min-height: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,.12);
+  background: #1a1830;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+  user-select: none;
+}
+.fc:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.fc.fc-locked { filter: grayscale(.7); opacity: .7; }
+
+/* Цвета фона по классу юнита */
+.fc.fc-tank        { background: linear-gradient(160deg,#12224a 0%,#1a1830 100%); border-color: #185FA5; }
+.fc.fc-spear       { background: linear-gradient(160deg,#1e1544 0%,#1a1830 100%); border-color: #534AB7; }
+.fc.fc-damage      { background: linear-gradient(160deg,#2a1040 0%,#1a1830 100%); border-color: #7a3ab7; }
+.fc.fc-archer      { background: linear-gradient(160deg,#0e2212 0%,#1a1830 100%); border-color: #3B6D11; }
+.fc.fc-crossbow    { background: linear-gradient(160deg,#071f18 0%,#1a1830 100%); border-color: #0F6E56; }
+.fc.fc-mage-aoe    { background: linear-gradient(160deg,#2a1c08 0%,#1a1830 100%); border-color: #BA7517; }
+.fc.fc-mage        { background: linear-gradient(160deg,#2a1400 0%,#1a1830 100%); border-color: #7B3F00; }
+.fc.fc-healer      { background: linear-gradient(160deg,#072222 0%,#1a1830 100%); border-color: #1a6b6b; }
+.fc.fc-buffer      { background: linear-gradient(160deg,#1a1507 0%,#1a1830 100%); border-color: #5a4a1e; }
+.fc.fc-debuff      { background: linear-gradient(160deg,#180718 0%,#1a1830 100%); border-color: #4a1a4a; }
+.fc.fc-beast       { background: linear-gradient(160deg,#1a1200 0%,#1a1830 100%); border-color: #7a6000; }
+.fc.fc-magic-beast { background: linear-gradient(160deg,#0a1a2a 0%,#1a1830 100%); border-color: #4a88cc; }
+.fc.fc-construct   { background: linear-gradient(160deg,#1a1a1a 0%,#1a1830 100%); border-color: #666; }
+.fc.fc-spirit      { background: linear-gradient(160deg,#0a0a22 0%,#1a1830 100%); border-color: #8877cc; }
+
+/* Звёздность — рамка + тень */
+.fc.fc-r1 { border-color: inherit; }
+.fc.fc-r2 { box-shadow: 0 0 6px #2d6a2d88; }
+.fc.fc-r3 { box-shadow: 0 0 8px #1a4d9988; }
+.fc.fc-r4 { box-shadow: 0 0 10px #66339988; }
+.fc.fc-r5 { box-shadow: 0 0 14px #aa880088; border-color: #D4AF37 !important; }
+
+/* Заголовок */
+.fc-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 7px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  background: rgba(0,0,0,.3);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.fc-cls-lbl { color: rgba(255,255,255,.6); }
+
+/* Звёзды */
+.fc-stars { font-size: 9px; letter-spacing: 0; }
+.fc-stars-1 { color: #888; }
+.fc-stars-2 { color: #4ade80; }
+.fc-stars-3 { color: #60a5fa; }
+.fc-stars-4 { color: #a78bfa; }
+.fc-stars-5 { color: #D4AF37; }
+
+/* Область с арт-изображением и статами по углам */
+.fc-art {
+  position: relative;
+  height: 100px;
+  background: rgba(0,0,0,.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.fc-med {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Четыре угловые статы */
+.fc-s {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background: rgba(0,0,0,.55);
+  border-radius: 5px;
+  padding: 2px 4px;
+  min-width: 28px;
+}
+.fc-s .si { font-size: 11px; line-height: 1; }
+.fc-s .sv { font-size: 10px; font-weight: 800; color: #fff; line-height: 1.1; }
+.fc-s .sl { font-size: 7px; color: rgba(255,255,255,.45); line-height: 1; }
+
+.fc-stl { top: 5px; left: 5px; }
+.fc-str { top: 5px; right: 5px; }
+.fc-sbl { bottom: 5px; left: 5px; }
+.fc-sbr { bottom: 5px; right: 5px; }
+
+/* Замок-оверлей */
+.fc-lock-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+/* Блок имени */
+.fc-nb {
+  padding: 4px 7px;
+  flex-shrink: 0;
+}
+.fc-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e8e0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-name.fc-name-legend { color: #D4AF37; }
+.fc-sub {
+  font-size: 9px;
+  color: rgba(255,255,255,.4);
+  margin-top: 1px;
+}
+
+/* Список способностей */
+.fc-abs {
+  flex: 1;
+  padding: 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.fc-ab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  color: rgba(255,255,255,.5);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.fc-ab-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fc-ab-text { overflow: hidden; text-overflow: ellipsis; }
+
+/* Футер */
+.fc-ft {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 7px;
+  font-size: 8.5px;
+  color: rgba(255,255,255,.35);
+  border-top: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
+}
+.fc-ft-col { font-size: 8px; }
+
+/* Грид карточек в казарме */
+#barracks-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  justify-content: flex-start;
+}
+
+/* ── CARD DETAIL OVERLAY ──────────────────────────────────────── */
+
+.card-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlay-in .2s ease;
+}
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+.card-detail-modal {
+  animation: modal-in .25s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes modal-in {
+  from { transform: scale(.85); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.dm {
+  display: flex;
+  width: 390px;
+  max-height: 90vh;
+  background: #12102a;
+  border-radius: 14px;
+  border: 2px solid #7F77DD;
+  overflow: hidden;
+}
+
+.dm-left {
+  width: 162px;
+  flex-shrink: 0;
+}
+.dm-left .fc {
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  width: 100%;
+  cursor: default;
+}
+
+.dm-r {
+  flex: 1;
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255,255,255,.07);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+  gap: 6px;
+  position: relative;
+}
+
+.dm-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.1);
+  border: none;
+  color: #aaa;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 22px;
+  text-align: center;
+  padding: 0;
+}
+.dm-close:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+.dm-sec {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.3);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.dm-lvl { display: flex; flex-direction: column; gap: 4px; }
+.dm-lr {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255,255,255,.7);
+}
+.dm-lr b { color: #fff; }
+.dm-bar {
+  height: 5px;
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dm-bf {
+  height: 100%;
+  background: linear-gradient(90deg, #7F77DD, #4ade80);
+  border-radius: 3px;
+  transition: width .3s;
+}
+.dm-hp { font-size: 9.5px; color: rgba(255,255,255,.45); }
+.dm-hp b { color: #4ade80; }
+
+.dm-btn {
+  padding: 6px 10px;
+  background: #7F77DD;
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.dm-btn:hover:not(:disabled) { background: #9d97e8; }
+.dm-btn.dm-btn-disabled,
+.dm-btn:disabled {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.3);
+  cursor: not-allowed;
+}
+
+.dm-locked-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+  text-align: center;
+  padding: 10px 8px;
+  border: 1px dashed rgba(255,255,255,.1);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+.dm-locked-hint small { font-size: 9.5px; color: rgba(255,255,255,.25); }
+
+.dm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.dm-st {
+  background: rgba(255,255,255,.04);
+  border-radius: 6px;
+  padding: 4px 3px;
+  text-align: center;
+}
+.dm-sv {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+.dm-sl {
+  font-size: 8px;
+  color: rgba(255,255,255,.35);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.dm-abs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dm-ab {
+  padding: 5px 7px;
+  border-radius: 6px;
+  border-left: 3px solid #555;
+  background: rgba(255,255,255,.03);
+  font-size: 9.5px;
+}
+.dm-abn {
+  font-weight: 700;
+  color: rgba(255,255,255,.75);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+.dm-ab-tag {
+  font-size: 8px;
+  color: rgba(255,255,255,.3);
+  font-weight: 400;
+}
+.dm-abd {
+  color: rgba(255,255,255,.45);
+  line-height: 1.4;
+}
+.fc-name-legend { color: #D4AF37; }

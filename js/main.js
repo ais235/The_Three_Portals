@@ -397,7 +397,7 @@ const App = {
   init() {
     this.setupNav();
     this.showScreen('home');
-    CollectionUI.init();
+    BarracksUI.init();
     InventoryUI.init();
     VillageUI.init();
     VillageMapUI.init();
@@ -426,7 +426,7 @@ const App = {
         if (!this._skipBattleInit) this.initBattle();
         this._skipBattleInit = false;
         break;
-      case 'collection':   CollectionUI.render();     break;
+      case 'barracks':     BarracksUI.render();       break;
       case 'inventory':    InventoryUI.render();      break;
       case 'village':      VillageUI.render();        break;
       case 'villagemap':   VillageMapUI.render();     break;

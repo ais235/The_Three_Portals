@@ -233,7 +233,7 @@ const InventoryUI = (() => {
     render();
     if (selectedWeapon) renderCompatibleAllies(selectedWeapon);
     // Update collection screen if visible
-    if (CollectionUI && CollectionUI.refresh) CollectionUI.refresh();
+    if (BarracksUI && BarracksUI.refresh) BarracksUI.refresh();
   }
 
   function resetPanel() {
