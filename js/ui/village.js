@@ -68,9 +68,9 @@ const VillageUI = (() => {
   // ── Balance bar ───────────────────────────────────────────────
 
   function _renderBalance() {
+    // Legacy balance bar elements (hidden via CSS) — keep for compatibility
     const coinsEl = document.getElementById('v-coins');
     const dustEl  = document.getElementById('v-dust');
-    const backEl  = document.getElementById('v-map-back');
     if (coinsEl) coinsEl.textContent = GameState.coins;
     if (dustEl) {
       const dust = GameState.getDust();
@@ -78,9 +78,8 @@ const VillageUI = (() => {
         `<span class="dust-chip star-${s}">★${s} <strong>${dust[s]||0}</strong></span>`
       ).join('');
     }
-    if (backEl) {
-      backEl.onclick = () => App.showScreen('villagemap');
-    }
+    // Update the global HUD
+    if (typeof App !== 'undefined' && App.updateHUD) App.updateHUD();
   }
 
   // ── Tab bar ───────────────────────────────────────────────────
@@ -123,6 +122,10 @@ const VillageUI = (() => {
       case 'council':  content.innerHTML = _buildCouncilHTML();  break;
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
     }
+    // Inject back-to-village button (floats above all tab content)
+    content.insertAdjacentHTML('afterbegin',
+      `<button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>`
+    );
   }
 
   // ================================================================

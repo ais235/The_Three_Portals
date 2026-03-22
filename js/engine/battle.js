@@ -573,7 +573,7 @@ const Battle = (() => {
   function exit() {
     clearTimeout(state?.autoTimer);
     state = null;
-    App.showScreen('home');
+    App.showScreen('villagemap');
   }
 
   // ── Public API ─────────────────────────────────────────────────

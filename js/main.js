@@ -395,31 +395,87 @@ const App = {
   _skipBattleInit:  false,  // set true when initCustomBattle handles setup
 
   init() {
-    this.setupNav();
-    this.showScreen('home');
+    GameState.load();
     BarracksUI.init();
     InventoryUI.init();
     VillageUI.init();
     VillageMapUI.init();
     WorldMap.init();
-    this.updateHomeStats();
+    this.showScreen('villagemap');
+    document.getElementById('hud-resources').classList.remove('hidden');
+    this.updateHUD();
   },
 
-  setupNav() {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.addEventListener('click', () => this.showScreen(btn.dataset.screen));
-    });
+  // ── HUD ────────────────────────────────────────────────────────
+
+  updateHUD() {
+    const coins = GameState.coins || 0;
+    const dust  = GameState.getDust ? GameState.getDust() : {};
+    const coinsEl = document.getElementById('coins-val');
+    if (coinsEl) coinsEl.textContent = coins;
+    const d1 = document.getElementById('hud-d1');
+    if (d1) { const b = d1.querySelector('b'); if (b) b.textContent = dust[1] || 0; }
+    const d2 = document.getElementById('hud-d2');
+    if (d2) { const b = d2.querySelector('b'); if (b) b.textContent = dust[2] || 0; }
+    const d3 = document.getElementById('hud-d3');
+    if (d3) { const b = d3.querySelector('b'); if (b) b.textContent = dust[3] || 0; }
   },
+
+  // ── Main menu ──────────────────────────────────────────────────
+
+  toggleMainMenu() {
+    const overlay = document.getElementById('main-menu-overlay');
+    if (overlay) overlay.classList.toggle('hidden');
+  },
+
+  resumeGame() {
+    const overlay = document.getElementById('main-menu-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  },
+
+  newGame() {
+    const overlay = document.getElementById('main-menu-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    this.showScreen('villagemap');
+  },
+
+  saveGame() {
+    GameState.save();
+  },
+
+  loadGame() {
+    GameState.load();
+    this.updateHUD();
+    const overlay = document.getElementById('main-menu-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    this.showScreen('villagemap');
+  },
+
+  openSettings() {
+    alert('Настройки — скоро!');
+  },
+
+  showCredits() {
+    alert('Fantasy Card Quest · v0.1\n\nТактическая карточная RPG');
+  },
+
+  startTestBattle() {
+    this.showScreen('battle');
+  },
+
+  // ── Screen routing ─────────────────────────────────────────────
 
   showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    // Building tabs are rendered inside screen-village
+    const BUILDING_TABS = ['portal', 'temple', 'shop', 'exchange', 'council', 'library'];
+    const isBuildingTab = BUILDING_TABS.includes(screenId);
+    const domId = isBuildingTab ? 'village' : screenId;
 
-    const target = document.getElementById(`screen-${screenId}`);
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    const target = document.getElementById(`screen-${domId}`);
     if (target) target.classList.remove('hidden');
 
-    const btn = document.querySelector(`.nav-btn[data-screen="${screenId}"]`);
-    if (btn) btn.classList.add('active');
+    this.updateHUD();
 
     switch (screenId) {
       case 'battle':
@@ -428,11 +484,18 @@ const App = {
         break;
       case 'barracks':     BarracksUI.render();       break;
       case 'inventory':    InventoryUI.render();      break;
-      case 'village':      VillageUI.render();        break;
       case 'villagemap':   VillageMapUI.render();     break;
       case 'worldmap':     WorldMap.render();         break;
       case 'squad_select': SquadSelect.render();      break;
-      case 'home':         this.updateHomeStats();    break;
+      case 'village':      VillageUI.render();        break;
+      case 'portal':
+      case 'temple':
+      case 'shop':
+      case 'exchange':
+      case 'council':
+      case 'library':
+        VillageUI.switchTab(screenId);
+        break;
     }
   },
 

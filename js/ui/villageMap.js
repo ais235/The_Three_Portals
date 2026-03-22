@@ -22,7 +22,7 @@ const VillageMapUI = (() => {
       pos:      { left:'18%', top:'8%',  width:'18%', height:'26%' },
       tipDir:   'below',
       tipAlign: 'start',
-      onClick:  () => _goVillageTab('temple'),
+      onClick:  () => App.showScreen('temple'),
     },
     {
       id:       'library',
@@ -32,7 +32,7 @@ const VillageMapUI = (() => {
       pos:      { left:'45%', top:'5%',  width:'12%', height:'25%' },
       tipDir:   'below',
       tipAlign: 'center',
-      onClick:  () => _goVillageTab('library'),
+      onClick:  () => App.showScreen('library'),
     },
     {
       id:       'council',
@@ -42,7 +42,7 @@ const VillageMapUI = (() => {
       pos:      { left:'64%', top:'8%',  width:'16%', height:'29%' },
       tipDir:   'below',
       tipAlign: 'end',
-      onClick:  () => _goVillageTab('council'),
+      onClick:  () => App.showScreen('council'),
     },
     {
       id:       'exchange',
@@ -52,7 +52,7 @@ const VillageMapUI = (() => {
       pos:      { left:'9%',  top:'35%', width:'18%', height:'22%' },
       tipDir:   'below',
       tipAlign: 'start',
-      onClick:  () => _goVillageTab('exchange'),
+      onClick:  () => App.showScreen('exchange'),
     },
     {
       id:       'portal',
@@ -62,7 +62,7 @@ const VillageMapUI = (() => {
       pos:      { left:'44%', top:'34%', width:'13%', height:'25%' },
       tipDir:   'below',
       tipAlign: 'center',
-      onClick:  () => _goVillageTab('portal'),
+      onClick:  () => App.showScreen('portal'),
     },
     {
       id:       'shop',
@@ -72,7 +72,7 @@ const VillageMapUI = (() => {
       pos:      { left:'60%', top:'37%', width:'18%', height:'22%' },
       tipDir:   'below',
       tipAlign: 'end',
-      onClick:  () => _goVillageTab('shop'),
+      onClick:  () => App.showScreen('shop'),
     },
     {
       id:       'arsenal',
@@ -107,11 +107,6 @@ const VillageMapUI = (() => {
   ];
 
   // ── Helpers ───────────────────────────────────────────────────
-
-  function _goVillageTab(tab) {
-    App.showScreen('village');
-    VillageUI.switchTab(tab);
-  }
 
   function _dustHTML() {
     const dust = GameState.getDust();

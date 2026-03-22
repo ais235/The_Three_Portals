@@ -9,19 +9,6 @@
 <body>
   <div id="app">
 
-    <!-- ── NAV ─────────────────────────────────────────── -->
-    <nav id="main-nav">
-      <div class="nav-brand">⚔️ <span>Fantasy Card Quest</span></div>
-      <div class="nav-buttons">
-        <button class="nav-btn" data-screen="home">🏰 Главная</button>
-        <button class="nav-btn" data-screen="worldmap">🗺️ Карта</button>
-        <button class="nav-btn" data-screen="villagemap">🏘 Деревня</button>
-        <button class="nav-btn" data-screen="battle">⚔️ Бой</button>
-        <button class="nav-btn" data-screen="barracks">🏕️ Казарма</button>
-        <button class="nav-btn" data-screen="inventory">🗡️ Инвентарь</button>
-      </div>
-    </nav>
-
     <!-- ── HOME ────────────────────────────────────────── -->
     <div id="screen-home" class="screen">
       <div class="home-hero">
@@ -62,6 +49,8 @@
 
     <!-- ── WORLDMAP SCREEN ──────────────────────────────── -->
     <div id="screen-worldmap" class="screen hidden">
+      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button class="btn-test-battle" onclick="App.startTestBattle()">⚔️ Тестовый бой</button>
       <div class="wm-screen-layout">
 
         <!-- Scrollable map -->
@@ -220,6 +209,8 @@
     <!-- ── BARRACKS SCREEN ───────────────────────────────── -->
     <div id="screen-barracks" class="screen hidden">
       <img class="barracks-bg" src="assets/barracks_bg.png" alt="">
+      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button class="btn-inventory" onclick="App.showScreen('inventory')">🎒 Склад</button>
       <div class="barracks-header">
         <h2>🏕️ Казарма</h2>
         <div class="filters">
@@ -248,6 +239,8 @@
 
     <!-- ── INVENTORY SCREEN ──────────────────────────────── -->
     <div id="screen-inventory" class="screen hidden">
+      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button class="btn-back-barracks" onclick="App.showScreen('barracks')">← Казарма</button>
       <div class="screen-header">
         <h2>🗡️ Инвентарь оружия</h2>
         <div class="filters">
@@ -301,6 +294,33 @@
         </div>
         <div id="portal-actions" class="portal-actions"></div>
       </div>
+    </div>
+
+    <!-- ── GAME LOGO (always on top) ──────────────────────── -->
+    <div id="game-logo" onclick="App.toggleMainMenu()">⚔️ Fantasy Card Quest</div>
+
+    <!-- ── MAIN MENU OVERLAY ───────────────────────────────── -->
+    <div id="main-menu-overlay" class="hidden">
+      <div id="main-menu">
+        <div class="mm-title">⚔️ Fantasy Card Quest</div>
+        <div class="mm-buttons">
+          <button onclick="App.resumeGame()">▶ Продолжить</button>
+          <button onclick="App.newGame()">🗺️ Новая игра</button>
+          <button onclick="App.saveGame()">💾 Сохранить</button>
+          <button onclick="App.loadGame()">📂 Загрузить</button>
+          <button onclick="App.openSettings()">⚙️ Настройки</button>
+          <button onclick="App.showCredits()">👥 Авторы</button>
+        </div>
+        <div class="mm-version">v0.1 · Fantasy Card Quest</div>
+      </div>
+    </div>
+
+    <!-- ── HUD RESOURCES ───────────────────────────────────── -->
+    <div id="hud-resources" class="hidden">
+      <span id="hud-coins">💰 <b id="coins-val">0</b></span>
+      <span class="hud-dust" id="hud-d1">★1 <b>0</b></span>
+      <span class="hud-dust" id="hud-d2">★2 <b>0</b></span>
+      <span class="hud-dust" id="hud-d3">★3 <b>0</b></span>
     </div>
 
   </div><!-- #app -->

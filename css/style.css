@@ -55,58 +55,133 @@ select { font-family: inherit; }
 
 .hidden { display: none !important; }
 
-/* ── NAV ───────────────────────────────────────────────────── */
-#main-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  height: 56px;
-  background: linear-gradient(135deg, #12122a, #1a1a3a);
-  border-bottom: 3px solid #3a3a6a;
-  box-shadow: 0 3px 20px rgba(0,0,0,0.7);
+/* ── GAME LOGO ─────────────────────────────────────────────── */
+#game-logo {
+  position: fixed; top: 12px; left: 16px;
+  z-index: 1000;
+  font-size: 15px; font-weight: 500;
+  color: rgba(255,255,255,.85);
+  text-shadow: 0 2px 8px rgba(0,0,0,.8);
+  cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+  padding: 6px 12px;
+  background: rgba(0,0,0,.45);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: background .15s;
+}
+#game-logo:hover { background: rgba(0,0,0,.65); }
+
+/* ── MAIN MENU OVERLAY ─────────────────────────────────────── */
+#main-menu-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,.75);
+  display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  animation: overlay-in .2s ease;
+}
+#main-menu-overlay.hidden { display: none; }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+#main-menu {
+  background: #0d0a1a;
+  border: 2px solid rgba(212,175,55,.3);
+  border-radius: 20px; padding: 40px 48px;
+  text-align: center; min-width: 320px;
+  animation: modal-in .25s cubic-bezier(.175,.885,.32,1.275);
+}
+.mm-title {
+  font-size: 22px; font-weight: 500;
+  color: #D4AF37; margin-bottom: 32px;
+  text-shadow: 0 0 20px rgba(212,175,55,.4);
+}
+.mm-buttons {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mm-buttons button {
+  padding: 12px 24px; border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.85); font-size: 14px;
+  cursor: pointer; transition: all .15s; text-align: left;
+}
+.mm-buttons button:hover {
+  background: rgba(212,175,55,.15);
+  border-color: rgba(212,175,55,.4);
+  color: #FAC775; transform: translateX(4px);
+}
+.mm-version {
+  margin-top: 24px; font-size: 11px;
+  color: rgba(255,255,255,.2);
 }
 
-.nav-brand {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--text-accent);
-  text-shadow: 0 0 12px rgba(255,224,102,0.5);
-  letter-spacing: 0.5px;
+/* ── HUD RESOURCES ─────────────────────────────────────────── */
+#hud-resources {
+  position: fixed; top: 12px; right: 16px;
+  z-index: 1000;
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 13px; color: rgba(255,255,255,.8);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
-.nav-brand span { display: none; }
-@media (min-width: 600px) { .nav-brand span { display: inline; } }
+#hud-resources.hidden { display: none !important; }
+#hud-coins b { color: #FAC775; font-weight: 500; }
+.hud-dust { font-size: 11px; color: rgba(255,255,255,.5); }
+.hud-dust b { color: #e8d5a0; font-weight: 500; }
 
-.nav-buttons { display: flex; gap: 6px; }
+/* ── NAVIGATION BUTTONS ────────────────────────────────────── */
+.btn-back-village {
+  position: absolute; top: 14px; left: 14px; z-index: 50;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px; padding: 7px 18px;
+  color: rgba(255,255,255,.8); font-size: 13px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  transition: background .15s;
+}
+.btn-back-village:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-.nav-btn {
-  padding: 7px 14px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.05);
-  color: var(--text-dim);
-  font-size: 0.82rem;
-  font-weight: 600;
-  transition: all 0.2s;
+.btn-back-barracks {
+  position: absolute; top: 14px; left: 130px; z-index: 50;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px; padding: 7px 18px;
+  color: rgba(255,255,255,.8); font-size: 13px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  transition: background .15s;
 }
-.nav-btn:hover {
-  background: rgba(255,255,255,0.12);
-  color: var(--text-main);
-  border-color: #5a5a8a;
+.btn-back-barracks:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+.btn-inventory {
+  position: absolute; top: 14px; right: 14px; z-index: 50;
+  background: rgba(212,175,55,.2);
+  border: 1px solid rgba(212,175,55,.35);
+  border-radius: 20px; padding: 7px 18px;
+  color: #FAC775; font-size: 13px; cursor: pointer;
+  transition: background .15s;
 }
-.nav-btn.active {
-  background: rgba(100,100,220,0.25);
-  color: var(--text-accent);
-  border-color: #6060cc;
+.btn-inventory:hover { background: rgba(212,175,55,.35); }
+
+.btn-test-battle {
+  position: absolute; bottom: 20px; right: 20px; z-index: 50;
+  background: rgba(180,30,30,.7);
+  border: 1px solid rgba(255,100,100,.4);
+  border-radius: 20px; padding: 10px 24px;
+  color: #ffaaaa; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background .15s;
 }
+.btn-test-battle:hover { background: rgba(220,40,40,.8); }
 
 /* ── SCREENS ───────────────────────────────────────────────── */
 .screen {
-  min-height: calc(100vh - 56px);
+  min-height: 100vh;
   padding: 20px;
+  position: relative;
 }
 
 /* ── HOME ──────────────────────────────────────────────────── */
@@ -228,7 +303,7 @@ select { font-family: inherit; }
   flex-direction: column;
   gap: 0;
   padding: 0;
-  min-height: calc(100vh - 56px);
+  min-height: 100vh;
 }
 
 #battle-topbar {
@@ -554,7 +629,7 @@ select { font-family: inherit; }
 /* ── BATTLE RESULT ─────────────────────────────────────────── */
 .battle-result {
   position: absolute;
-  inset: 56px 0 0 0;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1026,7 +1101,7 @@ select { font-family: inherit; }
   padding: 0;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px);
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -1408,71 +1483,17 @@ select { font-family: inherit; }
    VILLAGE — TAB LAYOUT (Этап 4)
    ================================================================ */
 
-.village-balance-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  background: var(--bg-card);
-  border-bottom: 2px solid var(--border);
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-.vb-coins { font-size: 0.95rem; font-weight: 700; color: var(--text-accent); }
-.vb-dust  { display: flex; gap: 6px; flex-wrap: wrap; }
-
-.v-back-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.v-back-btn:hover {
-  background: var(--border);
-  color: var(--text-primary);
-}
-
-/* Tab bar */
-.v-tab-bar {
-  display: flex;
-  gap: 0;
-  background: var(--bg-card);
-  border-bottom: 3px solid var(--border);
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-.v-tab-btn {
-  padding: 11px 18px;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -3px;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.18s;
-  font-family: inherit;
-}
-.v-tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
-.v-tab-btn.active {
-  color: var(--text-accent);
-  border-bottom-color: var(--text-accent);
-  background: rgba(255,224,102,0.06);
-}
+/* village-balance-bar and v-tab-bar are hidden — HUD and App.showScreen handle navigation */
+.village-balance-bar { display: none !important; }
+.v-tab-bar           { display: none !important; }
+.v-back-btn          { display: none !important; }
 
 /* Tab content area */
 .v-tab-content {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  position: relative;
   scrollbar-width: thin;
   scrollbar-color: #3a3a6a #0d0d1a;
 }
@@ -2265,7 +2286,7 @@ select { font-family: inherit; }
 #screen-worldmap {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px);
+  height: 100vh;
   overflow: hidden;
   padding: 0;
 }
@@ -2561,7 +2582,7 @@ select { font-family: inherit; }
 #screen-squad_select {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px);
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -2849,7 +2870,7 @@ select { font-family: inherit; }
 .vm-wrap {
   position: relative;
   width: 100%;
-  height: calc(100vh - 56px);
+  height: 100vh;
   overflow: hidden;
   /* Тёмный лес — фон для letterbox-полей по краям картинки */
   background: #0b1a0b;
@@ -3311,7 +3332,7 @@ select { font-family: inherit; }
   padding: 0;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px);
+  height: 100vh;
   overflow: hidden;
 }
 
