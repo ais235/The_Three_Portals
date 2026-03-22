@@ -146,7 +146,7 @@ select { font-family: inherit; }
 
 /* ── NPC SYSTEM ────────────────────────────────────────────── */
 .npc-wrap {
-  position: absolute; bottom: 0; z-index: 10;
+  position: absolute; bottom: 40px; z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -155,6 +155,14 @@ select { font-family: inherit; }
 }
 .npc-wrap.npc-left  { left: 24px; }
 .npc-wrap.npc-right { right: 24px; }
+
+/* Tabs: push content to the 4/5 zone opposite the NPC */
+.v-tab-content.tab-npc-left:not(.portal-active):not(.temple-active):not(.shop-active) {
+  padding-left: 22%;
+}
+.v-tab-content.tab-npc-right:not(.portal-active):not(.temple-active):not(.shop-active) {
+  padding-right: 22%;
+}
 
 .npc-bubble {
   background: rgba(0,0,0,.82);
@@ -810,6 +818,9 @@ select { font-family: inherit; }
 }
 
 /* ── INVENTORY ─────────────────────────────────────────────── */
+/* NPC арсенала справа — весь контент экрана не заходит под него */
+#screen-inventory { padding-right: 23%; }
+
 .inventory-layout {
   display: grid;
   grid-template-columns: 1fr 360px;
@@ -3374,7 +3385,7 @@ select { font-family: inherit; }
   pointer-events: none;
 }
 
-/* Шапка с фильтрами поверх фона */
+/* Шапка с фильтрами поверх фона — NPC слева занимает 22% */
 .barracks-header {
   position: relative;
   z-index: 1;
@@ -3382,7 +3393,7 @@ select { font-family: inherit; }
   background: rgba(0, 0, 0, 0.55);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  padding: 10px 16px 10px;
+  padding: 10px 16px 10px 23%;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .barracks-header h2 {
@@ -3400,7 +3411,7 @@ select { font-family: inherit; }
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  padding: 16px;
+  padding: 16px 16px 16px 23%;
   align-content: flex-start;
 }
 

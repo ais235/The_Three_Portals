@@ -14,7 +14,7 @@ const NPCSystem = (() => {
       name: 'Астра',
       title: 'Хранительница Портала',
       image: 'assets/npcs/portal_master.png',
-      position: 'right',
+      position: 'left',
       idle: [
         'Каждый свиток — судьба, запечатанная в пергаменте.',
         'Портал жаждет — брось монеты и увидишь чудо.',
@@ -102,7 +102,7 @@ const NPCSystem = (() => {
       name: 'Мирель',
       title: 'Алхимик Лавки',
       image: 'assets/npcs/alchemist.png',
-      position: 'right',
+      position: 'left',
       idle: [
         'Переработка — это не потеря, это инвестиция.',
         'Пыль важнее монет. Поверь алхимику.',
@@ -173,7 +173,7 @@ const NPCSystem = (() => {
       name: 'Архивар Велес',
       title: 'Старейшина Совета',
       image: 'assets/npcs/elder.png',
-      position: 'right',
+      position: 'left',
       idle: [
         'Ежедневные задания — путь к быстрому развитию.',
         'Совет следит за твоими успехами, воин.',
@@ -240,7 +240,7 @@ const NPCSystem = (() => {
       name: 'Сержант Торвальд',
       title: 'Командир казармы',
       image: 'assets/npcs/sergeant.png',
-      position: 'right',
+      position: 'left',
       idle: [
         'Прокачивай героев — слабых не держим!',
         'Пыль не копить, а тратить с умом.',
@@ -325,13 +325,14 @@ const NPCSystem = (() => {
   function render(npc) {
     const container = document.getElementById(`npc-container-${npc.id}`);
     if (!container) return;
+    // Set initial text immediately so bubble has correct size before DOM insertion
+    const initialLine = _pickLine(npc.idle) || '';
     container.innerHTML = `
       <div class="npc-wrap npc-${npc.position}">
-        <div class="npc-bubble" id="npc-bubble-${npc.id}"></div>
+        <div class="npc-bubble" id="npc-bubble-${npc.id}">${initialLine}</div>
         <img src="${npc.image}" class="npc-img" alt="${npc.name}"
              onerror="this.style.display='none'">
       </div>`;
-    say(npc.id, 'idle');
   }
 
   function say(buildingId, triggerKey) {
@@ -344,11 +345,10 @@ const NPCSystem = (() => {
     if (!line) return;
     const bubble = document.getElementById(`npc-bubble-${buildingId}`);
     if (bubble) {
+      // Set text first to avoid layout shift, then animate opacity
+      bubble.textContent = line;
       bubble.style.opacity = '0';
-      setTimeout(() => {
-        bubble.textContent = line;
-        bubble.style.opacity = '1';
-      }, 150);
+      requestAnimationFrame(() => { bubble.style.opacity = '1'; });
     }
   }
 
@@ -369,6 +369,10 @@ const NPCSystem = (() => {
     cleanup(buildingId);
     render(npc);
     _scheduleIdle(buildingId);
+  }
+
+  function getPosition(buildingId) {
+    return NPCS[buildingId]?.position || 'left';
   }
 
   function cleanup(buildingId) {
@@ -392,6 +396,6 @@ const NPCSystem = (() => {
     _scheduleIdle(buildingId);
   }
 
-  return { init, cleanup, cleanupAll, trigger, say };
+  return { init, cleanup, cleanupAll, trigger, say, getPosition };
 
 })();

@@ -22,10 +22,11 @@ const VillageUI = (() => {
   // ── Portal: позиции тумб со свитками ────────────────────────────
   // left/bottom — % от видимой области картинки (как PED_POSITIONS)
   // Меняй эти числа чтобы двигать тумбы по фону
+  // NPC слева занимает ~20%, свитки в зоне 20-100%
   const SCROLL_POSITIONS = [
-    { type: 'bronze', left: '18%', bottom: '24%', delay: '0s'   },
-    { type: 'silver', left: '50%', bottom:  '4%', delay: '0.8s' },
-    { type: 'gold',   left: '82%', bottom: '24%', delay: '1.6s' },
+    { type: 'bronze', left: '30%', bottom: '24%', delay: '0s'   },
+    { type: 'silver', left: '55%', bottom:  '4%', delay: '0.8s' },
+    { type: 'gold',   left: '80%', bottom: '24%', delay: '1.6s' },
   ];
 
   // ── Temple: позиции постаментов ─────────────────────────────────
@@ -131,7 +132,12 @@ const VillageUI = (() => {
     content.insertAdjacentHTML('beforeend',
       `<div id="npc-container-${id}"></div>`
     );
-    if (typeof NPCSystem !== 'undefined') NPCSystem.init(id);
+    if (typeof NPCSystem !== 'undefined') {
+      NPCSystem.init(id);
+      const pos = NPCSystem.getPosition(id);
+      content.classList.toggle('tab-npc-left',  pos === 'left');
+      content.classList.toggle('tab-npc-right', pos === 'right');
+    }
   }
 
   // ================================================================
