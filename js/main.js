@@ -474,7 +474,7 @@ const App = {
 
   showScreen(screenId) {
     // Building tabs are rendered inside screen-village
-    const BUILDING_TABS = ['portal', 'temple', 'shop', 'exchange', 'council'];
+    const BUILDING_TABS = ['portal', 'temple', 'shop', 'council'];
     const isBuildingTab = BUILDING_TABS.includes(screenId);
     const domId = isBuildingTab ? 'village' : screenId;
 
@@ -517,9 +517,11 @@ const App = {
       case 'portal':
       case 'temple':
       case 'shop':
-      case 'exchange':
       case 'council':
         VillageUI.switchTab(screenId);
+        break;
+      case 'exchange':
+        ExchangeUI.show();
         break;
       case 'library':
         LibraryUI.render();

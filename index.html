@@ -118,6 +118,49 @@
       </div>
     </div>
 
+    <!-- ── EXCHANGE SCREEN ──────────────────────────────── -->
+    <div id="screen-exchange" class="screen hidden">
+      <img class="building-bg" src="assets/exchange_bg.png"
+           onerror="this.src='assets/building-bg.png'">
+      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <div id="npc-container-exchange" class="npc-fixed-left"></div>
+      <!-- Верхний пояс: горизонтальный скролл карточек -->
+      <div class="exchange-top">
+        <div class="exchange-top-header">
+          <span class="ex-title">🃏 Карты для переработки</span>
+          <div class="ex-filters" id="ex-filters">
+            <button class="ef active" data-f="all">Все</button>
+            <button class="ef" data-f="dup">Дубликаты</button>
+            <button class="ef" data-f="1">★1</button>
+            <button class="ef" data-f="2">★2</button>
+            <button class="ef" data-f="3">★3</button>
+          </div>
+          <span class="ex-scroll-hint">← прокрути →</span>
+        </div>
+        <div class="exchange-cards-row" id="exchange-cards-row"></div>
+      </div>
+      <!-- Нижний пояс: котёл + очередь -->
+      <div class="exchange-bottom">
+        <div class="ex-cauldron-zone">
+          <div id="ex-cauldron" class="ex-cauldron">🫕</div>
+          <div class="ex-cauldron-hint" id="ex-hint">Выбери карты сверху</div>
+          <button class="ex-brew-btn" id="ex-brew-btn"
+                  onclick="ExchangeUI.doExchange()" disabled>
+            🔥 Переработать
+          </button>
+        </div>
+        <div class="ex-queue-zone">
+          <div class="ex-queue-label">В котёл:</div>
+          <div class="ex-queue-list" id="ex-queue-list">
+            <div class="ex-queue-empty">Ничего не выбрано</div>
+          </div>
+          <div class="ex-dust-result" id="ex-dust-result">
+            <div class="ex-dr-empty">— выбери карты —</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── LIBRARY SCREEN ──────────────────────────────── -->
     <div id="screen-library" class="screen hidden">
       <img class="building-bg" src="assets/building-bg.png" alt="">

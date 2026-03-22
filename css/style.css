@@ -267,10 +267,10 @@ select { font-family: inherit; }
 .npc-wrap.npc-right { right: 24px; }
 
 /* Tabs: push content to the 4/5 zone opposite the NPC */
-.v-tab-content.tab-npc-left:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active):not(.exchange-active) {
+.v-tab-content.tab-npc-left:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active) {
   padding-left: 22%;
 }
-.v-tab-content.tab-npc-right:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active):not(.exchange-active) {
+.v-tab-content.tab-npc-right:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active) {
   padding-right: 22%;
 }
 
@@ -4178,284 +4178,245 @@ select { font-family: inherit; }
   cursor: default;
 }
 
-/* ── EXCHANGE / ALCHEMY SHOP SCREEN ─────────────────────────── */
+/* ── EXCHANGE / ALCHEMY SHOP — standalone #screen-exchange ──── */
 
-.v-tab-content.exchange-active {
-  padding: 0;
-  overflow: hidden;
+#screen-exchange {
   position: relative;
-}
-
-.exchange-wrap {
-  position: absolute;
-  inset: 0;
   overflow: hidden;
-  z-index: 1;
 }
 
-/* Two-column layout: [NPC 180px fixed by NPCSystem] | [Cards 300px] | [Right flex:1] */
-.exchange-main {
+/* Top belt: horizontal card scroll, height ~50% */
+.exchange-top {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 180px;
-  right: 0;
-  display: flex;
-}
-
-/* ── Cards column */
-.cards-col {
-  width: 300px;
-  flex-shrink: 0;
+  top: 0; left: 0; right: 0;
+  height: 320px;
+  padding: 46px 14px 10px 200px; /* top clears logo; left 200px clears NPC */
   display: flex;
   flex-direction: column;
-  padding: 52px 10px 12px 14px;
-  border-right: 1px solid rgba(255,255,255,.06);
-  overflow: hidden;
-  background: rgba(0,0,0,.25);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.12);
 }
-.cards-col-header {
+.exchange-top-header {
+  flex-shrink: 0;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ex-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,.65);
   flex-shrink: 0;
 }
-.col-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255,255,255,.7);
+.ex-filters { display: flex; gap: 5px; }
+.ef {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  cursor: pointer;
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.4);
+  transition: all .15s;
 }
-.col-hint {
-  font-size: 9px;
-  color: rgba(255,255,255,.3);
+.ef.active {
+  background: rgba(80,160,40,.2);
+  border-color: rgba(80,160,40,.5);
+  color: #90e050;
+}
+.ex-scroll-hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: rgba(255,255,255,.2);
   font-style: italic;
 }
-.cards-scroll {
+
+/* Horizontal card scroll */
+.exchange-cards-row {
   flex: 1;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
-  align-content: start;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: flex-start;
+  padding-bottom: 4px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(212,175,55,.3) transparent;
+  scrollbar-color: rgba(80,160,40,.3) transparent;
+}
+.ex-row-empty {
+  font-size: 12px;
+  color: rgba(255,255,255,.25);
+  font-style: italic;
+  padding: 40px 20px;
+  white-space: nowrap;
 }
 
-/* Compact exchange card */
-.exc-card {
-  position: relative;
-  background: rgba(0,0,0,.4);
-  border: 1.5px solid rgba(255,255,255,.1);
-  border-radius: 10px;
-  padding: 8px 6px 7px;
+/* Cards inside the row — full .fc size, no shrink */
+.exchange-cards-row .fc {
+  flex-shrink: 0;
+  width: 175px;
+  min-height: 268px;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  transition: border-color .12s, background .12s, box-shadow .12s;
-  -webkit-user-select: none;
-  user-select: none;
 }
-.exc-card:hover {
-  background: rgba(212,175,55,.1);
-  border-color: rgba(212,175,55,.35);
+/* Selected state — red border + checkmark badge */
+.exchange-cards-row .fc.selected-for-exchange {
+  border-color: #E24B4A !important;
+  box-shadow: 0 0 12px rgba(226,75,74,.4);
 }
-.exc-card.exc-sel {
-  background: rgba(212,175,55,.18);
-  border-color: #D4AF37;
-  box-shadow: 0 0 10px rgba(212,175,55,.3);
-}
-.exc-check-badge {
+.exchange-cards-row .fc.selected-for-exchange::after {
+  content: '✓';
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 15px;
-  height: 15px;
-  background: #D4AF37;
-  color: #1a1200;
+  top: 6px; right: 6px;
+  width: 18px; height: 18px;
   border-radius: 50%;
-  font-size: 9px;
-  font-weight: 800;
+  background: #E24B4A;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.exc-icon { font-size: 24px; line-height: 1; }
-.exc-name {
-  font-size: 8.5px;
-  font-weight: 600;
-  color: rgba(255,255,255,.8);
-  text-align: center;
-  line-height: 1.2;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.exc-dust {
-  font-size: 8px;
-  color: rgba(212,175,55,.65);
+  font-size: 10px;
+  color: #fff;
+  font-weight: 700;
+  z-index: 10;
 }
 
-/* ── Right column: cauldron top + queue bottom */
-.right-col {
-  flex: 1;
+/* Bottom belt: cauldron + queue, starts after NPC zone */
+.exchange-bottom {
+  position: absolute;
+  top: 320px; left: 190px; right: 0; bottom: 0;
   display: flex;
-  flex-direction: column;
-  padding: 14px 20px;
-  gap: 12px;
-  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 
 /* Cauldron zone */
-.cauldron-zone {
+.ex-cauldron-zone {
+  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 0 14px;
-  border-bottom: 1px solid rgba(255,255,255,.07);
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-right: 1px solid rgba(255,255,255,.06);
 }
-.cauldron-wrap { line-height: 1; }
-.cauldron {
-  font-size: 80px;
-  display: block;
+.ex-cauldron {
+  font-size: 70px;
   line-height: 1;
-  animation: bob 3s ease-in-out infinite;
+  animation: ex-bob 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(40,200,40,.3));
 }
-.cauldron.boiling {
-  animation: cauldron-boil .28s ease-in-out 4;
-}
-@keyframes bob {
+@keyframes ex-bob {
   0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
+  50%       { transform: translateY(-7px); }
 }
-@keyframes cauldron-boil {
+@keyframes ex-boil {
   0%, 100% { transform: scale(1) rotate(0deg); }
-  50%       { transform: scale(1.15) rotate(7deg); }
+  25%       { transform: scale(1.05) rotate(-3deg); }
+  75%       { transform: scale(1.05) rotate(3deg); }
 }
-.cauldron-label {
+.ex-cauldron-hint {
   font-size: 11px;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.3);
   font-style: italic;
   text-align: center;
-  transition: color .2s;
+  line-height: 1.4;
 }
-
-/* Brew button */
-.brew-btn {
-  margin-top: 6px;
-  padding: 9px 28px;
+.ex-brew-btn {
+  padding: 9px 22px;
   border-radius: 12px;
   font-size: 13px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #8B2500, #D44000);
-  border: 1px solid rgba(255,100,50,.3);
-  color: #fff;
-  cursor: pointer;
-  transition: all .15s;
-  box-shadow: 0 0 12px rgba(200,80,0,.3);
+  font-weight: 500;
+  cursor: default;
+  background: rgba(226,75,74,.1);
+  color: rgba(255,120,120,.35);
+  border: 1.5px solid rgba(226,75,74,.12);
+  transition: all .2s;
 }
-.brew-btn:not(:disabled):hover {
-  background: linear-gradient(135deg, #D44000, #FF6020);
-  box-shadow: 0 0 22px rgba(200,80,0,.55);
+.ex-brew-btn:not(:disabled) {
+  background: rgba(226,75,74,.35);
+  color: #ff8888;
+  border-color: #E24B4A;
+  box-shadow: 0 0 14px rgba(226,75,74,.3);
+  cursor: pointer;
+}
+.ex-brew-btn:not(:disabled):hover {
+  background: rgba(226,75,74,.5);
+  box-shadow: 0 0 22px rgba(226,75,74,.5);
   transform: translateY(-1px);
 }
-.brew-btn:disabled {
-  background: rgba(255,255,255,.07);
-  color: rgba(255,255,255,.22);
-  cursor: default;
-  box-shadow: none;
-  border-color: rgba(255,255,255,.07);
-}
 
-/* Queue zone */
-.queue-zone {
+/* Queue + dust result */
+.ex-queue-zone {
   flex: 1;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 10px 14px;
   gap: 6px;
+  overflow: hidden;
 }
-.queue-header {
+.ex-queue-label {
   font-size: 11px;
   color: rgba(255,255,255,.4);
   flex-shrink: 0;
 }
-.queue-list {
+.ex-queue-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.1) transparent;
 }
-.queue-empty {
-  font-size: 11px;
-  color: rgba(255,255,255,.22);
-  font-style: italic;
-  text-align: center;
-  padding: 16px 0;
-}
-.queue-item {
+.ex-queue-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(0,0,0,.3);
-  border-radius: 8px;
+  gap: 8px;
   padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(226,75,74,.08);
+  border: 1px solid rgba(226,75,74,.18);
 }
-.qi-icon { font-size: 14px; flex-shrink: 0; }
-.qi-name {
-  flex: 1;
+.ex-qi-icon { font-size: 16px; flex-shrink: 0; }
+.ex-qi-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.8); }
+.ex-qi-dust { font-size: 9px; color: rgba(212,175,55,.7); }
+.ex-qi-rm {
   font-size: 11px;
-  color: rgba(255,255,255,.75);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qi-dust {
-  font-size: 11px;
-  color: #D4AF37;
-  flex-shrink: 0;
-}
-.qi-remove {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,.22);
+  color: rgba(255,80,80,.4);
   cursor: pointer;
-  font-size: 11px;
-  padding: 0 2px;
-  flex-shrink: 0;
-  line-height: 1;
+  padding: 2px 4px;
+  margin-left: auto;
 }
-.qi-remove:hover { color: rgba(255,100,100,.7); }
+.ex-qi-rm:hover { color: rgba(255,80,80,.8); }
+.ex-queue-empty {
+  font-size: 10px;
+  color: rgba(255,255,255,.2);
+  font-style: italic;
+  padding: 4px 0;
+}
 
 /* Dust result — stacked rows per star */
-.dust-result {
+.ex-dust-result {
   flex-shrink: 0;
-  background: rgba(212,175,55,.07);
-  border: 1px solid rgba(212,175,55,.15);
+  padding: 8px 10px;
   border-radius: 10px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  background: rgba(212,175,55,.06);
+  border: 1px solid rgba(212,175,55,.12);
 }
-.dr-row {
+.ex-dr-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 2px 0;
   font-size: 11px;
 }
-.dr-star { color: rgba(255,255,255,.45); }
-.dr-val  { color: #D4AF37; font-weight: 600; }
-.dr-empty {
+.ex-dr-star { color: rgba(255,255,255,.4); }
+.ex-dr-val  { color: #D4AF37; font-weight: 500; }
+.ex-dr-divider { height: 1px; background: rgba(255,255,255,.06); margin: 3px 0; }
+.ex-dr-empty {
   font-size: 10px;
-  color: rgba(255,255,255,.22);
+  color: rgba(255,255,255,.2);
   text-align: center;
+  font-style: italic;
 }

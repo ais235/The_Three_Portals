@@ -44,7 +44,6 @@ const VillageUI = (() => {
 
   const TABS = [
     { id:'portal',   icon:'🌀', label:'Портал'      },
-    { id:'exchange', icon:'🔄', label:'Обмен'        },
     { id:'temple',   icon:'🏛️', label:'Храм'         },
     { id:'shop',     icon:'🛒', label:'Магазин'      },
     { id:'council',  icon:'📜', label:'Совет'        },

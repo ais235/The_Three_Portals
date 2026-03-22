@@ -1,216 +1,198 @@
 // ================================================================
-// EXCHANGE UI — Alchemy Shop (Лавка алхимика / Обменный пункт)
+// EXCHANGE UI — Alchemy Shop (Лавка алхимика)
+// Standalone screen: #screen-exchange
+// Two belts: top = horizontal card scroll, bottom = cauldron + queue
 // ================================================================
 
-const ExchangeUI = (() => {
+const ExchangeUI = {
 
-  let _selected = [];
+  selected: [],   // card IDs queued for recycling
+  _activeFilter: 'all',
 
-  function _toast(msg, type) {
-    if (typeof VillageUI !== 'undefined' && VillageUI.showToast) {
-      VillageUI.showToast(msg, type);
-    }
-  }
+  // ── Entry point ───────────────────────────────────────────────
 
-  // ── Build HTML ────────────────────────────────────────────────
-  // Layout: [NPC 180px fixed] | [Cards 300px] | [Right: cauldron top + queue bottom]
+  show() {
+    this.selected      = [];
+    this._activeFilter = 'all';
+    this._resetFilter();
+    this.renderCards('all');
+    this.renderQueue();
+    this.attachFilters();
+    if (typeof NPCSystem !== 'undefined') NPCSystem.init('exchange');
+  },
 
-  function buildHTML() {
-    return `
-      <img class="building-bg" src="assets/exchange_bg.png"
-           onerror="this.src='assets/building-bg.png'">
-      <div class="exchange-wrap">
-        <div class="exchange-main">
+  // ── Filters ───────────────────────────────────────────────────
 
-          <!-- Left: card selection (300px) -->
-          <div class="cards-col">
-            <div class="cards-col-header">
-              <span class="col-title">⚗️ Карты</span>
-              <span class="col-hint">нажми чтобы выбрать</span>
-            </div>
-            <div class="cards-scroll" id="exchange-cards-grid"></div>
-          </div>
+  _resetFilter() {
+    document.querySelectorAll('.ef').forEach(b => {
+      b.classList.toggle('active', b.dataset.f === 'all');
+    });
+  },
 
-          <!-- Right: cauldron (top) + queue (bottom) -->
-          <div class="right-col">
+  attachFilters() {
+    document.querySelectorAll('.ef').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.ef').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this._activeFilter = btn.dataset.f;
+        this.renderCards(btn.dataset.f);
+      });
+    });
+  },
 
-            <div class="cauldron-zone">
-              <div class="cauldron-wrap">
-                <div id="cauldron-emoji" class="cauldron">🫕</div>
-              </div>
-              <div class="cauldron-label" id="cauldron-hint">
-                Выбери карты слева — брось в котёл
-              </div>
-              <button class="brew-btn" id="brew-btn"
-                      onclick="ExchangeUI.doExchange()" disabled>
-                🔥 Переработать
-              </button>
-            </div>
+  // ── Cards row (top belt) ──────────────────────────────────────
 
-            <div class="queue-zone">
-              <div class="queue-header">В котёл:</div>
-              <div class="queue-list" id="exchange-queue">
-                <div class="queue-empty">Выбери карты слева</div>
-              </div>
-              <div class="dust-result" id="dust-result">
-                <div class="dr-empty">Ничего не выбрано</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>`;
-  }
-
-  // ── Render cards grid ─────────────────────────────────────────
-
-  function renderCards() {
-    const grid = document.getElementById('exchange-cards-grid');
-    if (!grid) return;
+  renderCards(filter) {
+    const row = document.getElementById('exchange-cards-row');
+    if (!row) return;
 
     const unlocked = GameState.getUnlocked();
-    const seen   = new Set();
-    const unique = unlocked.filter(id => {
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
 
-    if (!unique.length) {
-      grid.innerHTML = '<div class="queue-empty" style="grid-column:1/-1">Нет карт для переработки</div>';
+    // Build counts for dup filter
+    const counts = {};
+    unlocked.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+
+    let cards = unlocked
+      .map(id => ALLIES.find(c => c.id === id))
+      .filter(Boolean);
+
+    if (filter === 'dup') {
+      cards = cards.filter(c => counts[c.id] > 1);
+    } else if (['1','2','3','4','5'].includes(filter)) {
+      const s = Number(filter);
+      cards = cards.filter(c => {
+        const lvl   = GameState.getCardLevel(c.id);
+        const stars = lvl ? lvl.stars : c.starRange[0];
+        return stars === s;
+      });
+    }
+
+    if (!cards.length) {
+      row.innerHTML = '<div class="ex-row-empty">Нет карт для выбранного фильтра</div>';
       return;
     }
 
-    grid.innerHTML = unique.map(id => {
-      const ally  = ALLIES.find(a => a.id === id);
-      if (!ally) return '';
-      const lvl   = GameState.getCardLevel(id);
-      const stars = lvl ? lvl.stars : ally.starRange[0];
-      const sel   = _selected.includes(id);
-      return `
-        <div class="exc-card${sel ? ' exc-sel' : ''}" onclick="ExchangeUI.toggleCard('${id}')">
-          ${sel ? '<div class="exc-check-badge">✓</div>' : ''}
-          <div class="exc-icon">${ally.icon || '⚔️'}</div>
-          <div class="exc-name">${ally.name}</div>
-          <div class="exc-dust">пыль ★${stars}</div>
-        </div>`;
-    }).join('');
-  }
+    row.innerHTML = cards.map(card =>
+      UnitCard.buildMiniCard(card, { showLocked: false })
+    ).join('');
 
-  // ── Render queue + dust result ────────────────────────────────
+    // Restore selection highlight + attach toggle clicks
+    row.querySelectorAll('.fc[data-id]').forEach(el => {
+      if (this.selected.includes(el.dataset.id)) {
+        el.classList.add('selected-for-exchange');
+      }
+      el.addEventListener('click', e => {
+        e.stopPropagation();  // prevent UnitCard detail modal
+        this.toggleCard(el.dataset.id);
+      });
+    });
+  },
 
-  function renderQueue() {
-    const list   = document.getElementById('exchange-queue');
-    const result = document.getElementById('dust-result');
-    const btn    = document.getElementById('brew-btn');
+  // ── Toggle selection ──────────────────────────────────────────
+
+  toggleCard(id) {
+    const idx = this.selected.indexOf(id);
+    if (idx === -1) this.selected.push(id);
+    else            this.selected.splice(idx, 1);
+    this.renderCards(this._activeFilter);
+    this.renderQueue();
+  },
+
+  // ── Queue + dust result (bottom belt) ────────────────────────
+
+  renderQueue() {
+    const list   = document.getElementById('ex-queue-list');
+    const result = document.getElementById('ex-dust-result');
+    const hint   = document.getElementById('ex-hint');
+    const btn    = document.getElementById('ex-brew-btn');
     if (!list || !result) return;
 
-    if (!_selected.length) {
-      list.innerHTML   = '<div class="queue-empty">Выбери карты слева</div>';
-      result.innerHTML = '<div class="dr-empty">Ничего не выбрано</div>';
-      if (btn) btn.disabled = true;
+    if (!this.selected.length) {
+      list.innerHTML   = '<div class="ex-queue-empty">Ничего не выбрано</div>';
+      result.innerHTML = '<div class="ex-dr-empty">— выбери карты —</div>';
+      if (hint) hint.textContent = 'Выбери карты сверху';
+      if (btn)  { btn.disabled = true; btn.textContent = '🔥 Переработать'; }
       return;
     }
 
-    // Dust totals per star level
-    const dustMap = {};
-    _selected.forEach(id => {
-      const ally  = ALLIES.find(a => a.id === id);
+    // Selected items list
+    list.innerHTML = this.selected.map(id => {
+      const card  = ALLIES.find(c => c.id === id);
       const lvl   = GameState.getCardLevel(id);
-      const stars = lvl ? lvl.stars : (ally?.starRange[0] || 1);
-      dustMap[stars] = (dustMap[stars] || 0) + 1;
-    });
-
-    // Queue items list
-    list.innerHTML = _selected.map(id => {
-      const ally  = ALLIES.find(a => a.id === id);
-      const lvl   = GameState.getCardLevel(id);
-      const stars = lvl ? lvl.stars : (ally?.starRange[0] || 1);
+      const stars = lvl ? lvl.stars : (card?.starRange[0] || 1);
       return `
-        <div class="queue-item">
-          <span class="qi-icon">${ally?.icon || '⚔️'}</span>
-          <span class="qi-name">${ally?.name || id}</span>
-          <span class="qi-dust">★${stars}</span>
-          <button class="qi-remove" onclick="ExchangeUI.toggleCard('${id}')">✕</button>
+        <div class="ex-queue-item">
+          <span class="ex-qi-icon">${card?.icon || '🃏'}</span>
+          <div>
+            <div class="ex-qi-name">${card?.name || id}</div>
+            <div class="ex-qi-dust">+1 пыль ★${stars}</div>
+          </div>
+          <span class="ex-qi-rm" onclick="ExchangeUI.toggleCard('${id}')">✕</span>
         </div>`;
     }).join('');
 
-    // Dust result — stacked rows per star
-    result.innerHTML = Object.entries(dustMap)
+    // Dust totals per star — stacked rows
+    const totals = {};
+    this.selected.forEach(id => {
+      const card  = ALLIES.find(c => c.id === id);
+      const lvl   = GameState.getCardLevel(id);
+      const stars = lvl ? lvl.stars : (card?.starRange[0] || 1);
+      totals[stars] = (totals[stars] || 0) + 1;
+    });
+    result.innerHTML = Object.entries(totals)
       .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([stars, count]) => `
-        <div class="dr-row">
-          <span class="dr-star">Пыль ★${stars}</span>
-          <span class="dr-val">+${count}</span>
-        </div>`)
+      .map(([s, n], i, arr) => `
+        <div class="ex-dr-row">
+          <span class="ex-dr-star">Пыль ★${s}</span>
+          <span class="ex-dr-val">+${n}</span>
+        </div>${i < arr.length - 1 ? '<div class="ex-dr-divider"></div>' : ''}`)
       .join('');
 
-    if (btn) btn.disabled = false;
-  }
+    if (hint) hint.textContent = `${this.selected.length} карт выбрано`;
+    if (btn) {
+      btn.disabled    = false;
+      btn.textContent = `🔥 Переработать (${this.selected.length})`;
+    }
+  },
 
-  // ── Toggle card selection ─────────────────────────────────────
+  // ── Execute exchange ──────────────────────────────────────────
 
-  function toggleCard(cardId) {
-    const idx = _selected.indexOf(cardId);
-    if (idx === -1) _selected.push(cardId);
-    else _selected.splice(idx, 1);
-    renderCards();
-    renderQueue();
-  }
+  doExchange() {
+    if (!this.selected.length) return;
 
-  // ── Do exchange ───────────────────────────────────────────────
+    // Cauldron boil animation
+    const cauldron = document.getElementById('ex-cauldron');
+    if (cauldron) {
+      cauldron.style.animation = 'ex-boil 0.3s ease-in-out 4';
+      setTimeout(() => {
+        if (cauldron) cauldron.style.animation = 'ex-bob 3s ease-in-out infinite';
+      }, 1300);
+    }
 
-  function doExchange() {
-    if (!_selected.length) return;
-
-    const toProcess = [..._selected];
-    _selected = [];
-
+    // Recycle via GameState API
     let recycled = 0;
+    const toProcess = [...this.selected];
+    this.selected = [];
+
     toProcess.forEach(id => {
       const res = GameState.recycleCard(id);
-      if (res.ok) recycled++;
-      else _toast(res.reason, 'error');
+      if (res.ok) {
+        recycled++;
+      } else if (typeof VillageUI !== 'undefined') {
+        VillageUI.showToast(res.reason, 'error');
+      }
     });
 
     if (recycled > 0) {
-      _toast(`Переработано ${recycled} карт в пыль!`, 'success');
+      GameState.incrementQuestProgress('recycle_cards', recycled);
       if (typeof App !== 'undefined') App.updateHUD();
       if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('exchange', 'card_recycled');
-
-      // Boiling animation
-      const cauldron = document.getElementById('cauldron-emoji');
-      if (cauldron) {
-        cauldron.classList.add('boiling');
-        setTimeout(() => cauldron.classList.remove('boiling'), 1200);
-      }
-
-      // Update cauldron hint
-      const hint = document.getElementById('cauldron-hint');
-      if (hint) {
-        hint.textContent = '✨ Переработка завершена!';
-        setTimeout(() => {
-          if (hint) hint.textContent = 'Выбери карты слева — брось в котёл';
-        }, 2000);
+      if (typeof VillageUI !== 'undefined') {
+        VillageUI.showToast(`Переработано ${recycled} карт в пыль!`, 'success');
       }
     }
 
-    renderCards();
-    renderQueue();
-
-    if (typeof BarracksUI !== 'undefined' && BarracksUI.render) {
-      BarracksUI.render();
-    }
-  }
-
-  // ── Init ──────────────────────────────────────────────────────
-
-  function render() {
-    _selected = [];
-    renderCards();
-    renderQueue();
-  }
-
-  return { buildHTML, render, renderCards, renderQueue, toggleCard, doExchange };
-
-})();
+    this.renderCards(this._activeFilter);
+    this.renderQueue();
+  },
+};
