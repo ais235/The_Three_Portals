@@ -31,12 +31,14 @@ const VillageUI = (() => {
   // ── Temple: позиции постаментов ─────────────────────────────────
   // left/bottom — % от видимой области картинки (как зоны в villageMap.js)
   // Меняй эти числа чтобы расставить постаменты по фону
+  // NPC занимает 0-20% экрана слева, постаменты равномерно в зоне 20-100%
+  // 5 слотов по 16%, центры: 28%, 44%, 60%, 76%, 92%
   const PED_POSITIONS = [
-    { id: 'warlord_pauldron',  left: '15%', bottom: '4%'  },
-    { id: 'temple_rune',       left: '33%', bottom: '8%'  },
-    { id: 'fortress_banner',   left: '50%', bottom: '12%' },
-    { id: 'necromancer_staff', left: '67%', bottom: '8%'  },
-    { id: 'hero_crown',        left: '83%', bottom: '4%'  },
+    { id: 'warlord_pauldron',  left: '26%', bottom: '4%' },
+    { id: 'temple_rune',       left: '42%', bottom: '4%' },
+    { id: 'fortress_banner',   left: '58%', bottom: '4%' },
+    { id: 'necromancer_staff', left: '74%', bottom: '4%' },
+    { id: 'hero_crown',        left: '90%', bottom: '4%' },
   ];
 
   const TABS = [
