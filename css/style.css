@@ -1838,7 +1838,7 @@ select { font-family: inherit; }
 .shop-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   padding: 4px 0;
 }
 
@@ -2980,9 +2980,9 @@ select { font-family: inherit; }
 .fc {
   display: flex;
   flex-direction: column;
-  width: 162px;
-  min-height: 220px;
-  border-radius: 10px;
+  width: 200px;
+  min-height: 340px;
+  border-radius: 14px;
   overflow: hidden;
   border: 2px solid rgba(255,255,255,.12);
   background: #1a1830;
@@ -3022,8 +3022,8 @@ select { font-family: inherit; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 7px 4px;
-  font-size: 9px;
+  padding: 6px 10px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .05em;
   background: rgba(0,0,0,.3);
@@ -3032,7 +3032,7 @@ select { font-family: inherit; }
 .fc-cls-lbl { color: rgba(255,255,255,.6); }
 
 /* Звёзды */
-.fc-stars { font-size: 9px; letter-spacing: 0; }
+.fc-stars { font-size: 13px; letter-spacing: 1px; }
 .fc-stars-1 { color: #888; }
 .fc-stars-2 { color: #4ade80; }
 .fc-stars-3 { color: #60a5fa; }
@@ -3042,7 +3042,7 @@ select { font-family: inherit; }
 /* Область с арт-изображением и статами по углам */
 .fc-art {
   position: relative;
-  height: 100px;
+  height: 140px;
   background: rgba(0,0,0,.2);
   display: flex;
   align-items: center;
@@ -3050,8 +3050,8 @@ select { font-family: inherit; }
   flex-shrink: 0;
 }
 .fc-med {
-  width: 72px;
-  height: 72px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.1);
@@ -3059,6 +3059,7 @@ select { font-family: inherit; }
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  font-size: 72px;
 }
 
 /* Четыре угловые статы */
@@ -3069,13 +3070,13 @@ select { font-family: inherit; }
   align-items: center;
   gap: 0;
   background: rgba(0,0,0,.55);
-  border-radius: 5px;
-  padding: 2px 4px;
-  min-width: 28px;
+  border-radius: 8px;
+  padding: 3px 6px;
+  min-width: 40px;
 }
 .fc-s .si { font-size: 11px; line-height: 1; }
-.fc-s .sv { font-size: 10px; font-weight: 800; color: #fff; line-height: 1.1; }
-.fc-s .sl { font-size: 7px; color: rgba(255,255,255,.45); line-height: 1; }
+.fc-s .sv { font-size: 13px; font-weight: 800; color: #fff; line-height: 1.1; }
+.fc-s .sl { font-size: 8px; color: rgba(255,255,255,.45); line-height: 1; }
 
 .fc-stl { top: 5px; left: 5px; }
 .fc-str { top: 5px; right: 5px; }
@@ -3095,11 +3096,11 @@ select { font-family: inherit; }
 
 /* Блок имени */
 .fc-nb {
-  padding: 4px 7px;
+  padding: 5px 10px 4px;
   flex-shrink: 0;
 }
 .fc-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #e8e0ff;
   white-space: nowrap;
@@ -3108,34 +3109,35 @@ select { font-family: inherit; }
 }
 .fc-name.fc-name-legend { color: #D4AF37; }
 .fc-sub {
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(255,255,255,.4);
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 /* Список способностей */
 .fc-abs {
   flex: 1;
-  padding: 0 6px;
+  padding: 4px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   overflow: hidden;
 }
 .fc-ab {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 8.5px;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 10px;
   color: rgba(255,255,255,.5);
   white-space: nowrap;
   overflow: hidden;
 }
 .fc-ab-dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 3px;
 }
 .fc-ab-text { overflow: hidden; text-overflow: ellipsis; }
 
@@ -3143,19 +3145,20 @@ select { font-family: inherit; }
 .fc-ft {
   display: flex;
   justify-content: space-between;
-  padding: 4px 7px;
-  font-size: 8.5px;
+  align-items: center;
+  padding: 5px 10px 8px;
+  font-size: 10px;
   color: rgba(255,255,255,.35);
   border-top: 1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
 }
-.fc-ft-col { font-size: 8px; }
+.fc-ft-col { font-size: 10px; }
 
 /* Грид карточек в казарме */
 #barracks-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   padding: 16px;
   justify-content: flex-start;
 }
@@ -3184,7 +3187,7 @@ select { font-family: inherit; }
 
 .dm {
   display: flex;
-  width: 390px;
+  width: 480px;
   max-height: 90vh;
   background: #12102a;
   border-radius: 14px;
@@ -3193,7 +3196,7 @@ select { font-family: inherit; }
 }
 
 .dm-left {
-  width: 162px;
+  width: 200px;
   flex-shrink: 0;
 }
 .dm-left .fc {
@@ -3236,7 +3239,7 @@ select { font-family: inherit; }
 .dm-close:hover { background: rgba(255,255,255,.2); color: #fff; }
 
 .dm-sec {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
   color: rgba(255,255,255,.3);
@@ -3264,16 +3267,16 @@ select { font-family: inherit; }
   border-radius: 3px;
   transition: width .3s;
 }
-.dm-hp { font-size: 9.5px; color: rgba(255,255,255,.45); }
+.dm-hp { font-size: 11px; color: rgba(255,255,255,.45); }
 .dm-hp b { color: #4ade80; }
 
 .dm-btn {
-  padding: 6px 10px;
+  padding: 8px 10px;
   background: #7F77DD;
   border: none;
   border-radius: 7px;
   color: #fff;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: background .15s;
@@ -3310,13 +3313,13 @@ select { font-family: inherit; }
   text-align: center;
 }
 .dm-sv {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   color: #fff;
   line-height: 1.1;
 }
 .dm-sl {
-  font-size: 8px;
+  font-size: 9px;
   color: rgba(255,255,255,.35);
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -3335,6 +3338,7 @@ select { font-family: inherit; }
   font-size: 9.5px;
 }
 .dm-abn {
+  font-size: 12px;
   font-weight: 700;
   color: rgba(255,255,255,.75);
   display: flex;
@@ -3343,11 +3347,12 @@ select { font-family: inherit; }
   margin-bottom: 2px;
 }
 .dm-ab-tag {
-  font-size: 8px;
+  font-size: 9px;
   color: rgba(255,255,255,.3);
   font-weight: 400;
 }
 .dm-abd {
+  font-size: 11px;
   color: rgba(255,255,255,.45);
   line-height: 1.4;
 }
