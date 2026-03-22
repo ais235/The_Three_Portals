@@ -61,10 +61,11 @@ const LibraryUI = (() => {
   function _prepareEnemies() {
     const templates = typeof ENEMY_TEMPLATES !== 'undefined' ? ENEMY_TEMPLATES : {};
 
-    // Build locations map
+    // Build locations map (exclude boss encounters — they are named after the boss, not a place)
     const locMap = {};
     if (typeof LOCATIONS !== 'undefined') {
       LOCATIONS.forEach(loc => {
+        if ((loc.id || '').startsWith('boss_')) return;
         (loc.enemies || []).forEach(eId => {
           if (!locMap[eId]) locMap[eId] = [];
           locMap[eId].push(loc.name);
