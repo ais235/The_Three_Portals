@@ -3187,7 +3187,7 @@ select { font-family: inherit; }
 
 .dm {
   display: flex;
-  width: 480px;
+  width: 640px;
   max-height: 90vh;
   background: #12102a;
   border-radius: 14px;
@@ -3196,20 +3196,31 @@ select { font-family: inherit; }
 }
 
 .dm-left {
-  width: 200px;
+  width: 240px;
   flex-shrink: 0;
 }
 .dm-left .fc {
   height: 100%;
   border-radius: 0;
   border: none;
-  width: 100%;
+  width: 240px;
   cursor: default;
 }
+.dm-left .fc-art  { height: 200px; }
+.dm-left .fc-med  { width: 160px; height: 160px; font-size: 74px; }
+.dm-left .fc-hd   { font-size: 12px; padding: 7px 12px; }
+.dm-left .fc-name { font-size: 16px; }
+.dm-left .fc-sub  { font-size: 13px; }
+.dm-left .fc-ab   { font-size: 12px; }
+.dm-left .fc-ft   { font-size: 11px; padding: 5px 12px 10px; }
+.dm-left .fc-ft-col { font-size: 11px; }
+.dm-left .fc-s .sv { font-size: 14px; }
+.dm-left .fc-s .sl { font-size: 9px; }
+.dm-left .fc-stars { font-size: 15px; }
 
 .dm-r {
   flex: 1;
-  padding: 10px 12px 8px;
+  padding: 16px 18px 12px;
   display: flex;
   flex-direction: column;
   border-left: 1px solid rgba(255,255,255,.07);
@@ -3239,27 +3250,30 @@ select { font-family: inherit; }
 .dm-close:hover { background: rgba(255,255,255,.2); color: #fff; }
 
 .dm-sec {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .08em;
   color: rgba(255,255,255,.3);
   text-transform: uppercase;
   margin-top: 4px;
+  margin-bottom: 6px;
 }
 
 .dm-lvl { display: flex; flex-direction: column; gap: 4px; }
 .dm-lr {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(255,255,255,.7);
+  margin-bottom: 5px;
 }
 .dm-lr b { color: #fff; }
 .dm-bar {
-  height: 5px;
+  height: 8px;
   background: rgba(255,255,255,.1);
   border-radius: 3px;
   overflow: hidden;
+  margin-bottom: 5px;
 }
 .dm-bf {
   height: 100%;
@@ -3267,20 +3281,21 @@ select { font-family: inherit; }
   border-radius: 3px;
   transition: width .3s;
 }
-.dm-hp { font-size: 11px; color: rgba(255,255,255,.45); }
+.dm-hp { font-size: 12px; color: rgba(255,255,255,.45); }
 .dm-hp b { color: #4ade80; }
 
 .dm-btn {
-  padding: 8px 10px;
+  padding: 10px;
   background: #7F77DD;
   border: none;
-  border-radius: 7px;
+  border-radius: 10px;
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: background .15s;
   flex-shrink: 0;
+  margin-bottom: 12px;
 }
 .dm-btn:hover:not(:disabled) { background: #9d97e8; }
 .dm-btn.dm-btn-disabled,
@@ -3304,22 +3319,23 @@ select { font-family: inherit; }
 .dm-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  gap: 5px;
+  margin-bottom: 12px;
 }
 .dm-st {
   background: rgba(255,255,255,.04);
-  border-radius: 6px;
-  padding: 4px 3px;
+  border-radius: 8px;
+  padding: 7px 5px;
   text-align: center;
 }
 .dm-sv {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   color: #fff;
   line-height: 1.1;
 }
 .dm-sl {
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(255,255,255,.35);
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -3328,17 +3344,16 @@ select { font-family: inherit; }
 .dm-abs {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .dm-ab {
-  padding: 5px 7px;
-  border-radius: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border-left: 3px solid #555;
   background: rgba(255,255,255,.03);
-  font-size: 9.5px;
 }
 .dm-abn {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: rgba(255,255,255,.75);
   display: flex;
@@ -3347,13 +3362,13 @@ select { font-family: inherit; }
   margin-bottom: 2px;
 }
 .dm-ab-tag {
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(255,255,255,.3);
   font-weight: 400;
 }
 .dm-abd {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255,255,255,.45);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 .fc-name-legend { color: #D4AF37; }
