@@ -19,8 +19,8 @@ const VillageUI = (() => {
   // Меняй эти числа чтобы расставить постаменты по фону
   const PED_POSITIONS = [
     { id: 'warlord_pauldron',  left: '15%', bottom: '4%'  },
-    { id: 'temple_rune',       left: '30%', bottom: '8%'  },
-    { id: 'fortress_banner',   left: '50%', bottom: '17%' },
+    { id: 'temple_rune',       left: '33%', bottom: '8%'  },
+    { id: 'fortress_banner',   left: '50%', bottom: '12%' },
     { id: 'necromancer_staff', left: '67%', bottom: '8%'  },
     { id: 'hero_crown',        left: '83%', bottom: '4%'  },
   ];
