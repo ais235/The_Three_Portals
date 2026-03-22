@@ -9,10 +9,23 @@ const VillageUI = (() => {
   let _libTab  = 'allies';   // library sub-tab
   let _libSearch = '';
   let _templeResizeObs = null;
+  let _portalResizeObs = null;
 
   // ── Temple: тестовый режим — все артефакты видны ────────────────
   // Поставь false чтобы вернуть реальное состояние из GameState
   const TEMPLE_SHOW_ALL = true;
+
+  // ── Portal: debug-режим — красные рамки тумб ────────────────────
+  const PORTAL_DEBUG = false;
+
+  // ── Portal: позиции тумб со свитками ────────────────────────────
+  // left/bottom — % от видимой области картинки (как PED_POSITIONS)
+  // Меняй эти числа чтобы двигать тумбы по фону
+  const SCROLL_POSITIONS = [
+    { type: 'bronze', left: '18%', bottom:  '8%', delay: '0s'   },
+    { type: 'silver', left: '50%', bottom: '14%', delay: '0.8s' },
+    { type: 'gold',   left: '82%', bottom:  '8%', delay: '1.6s' },
+  ];
 
   // ── Temple: позиции постаментов ─────────────────────────────────
   // left/bottom — % от видимой области картинки (как зоны в villageMap.js)
@@ -95,11 +108,12 @@ const VillageUI = (() => {
   function _showTab(id) {
     const content = document.getElementById('v-tab-content');
     if (!content) return;
-    // Убираем старый ResizeObserver Храма при смене вкладки
     if (_templeResizeObs) { _templeResizeObs.disconnect(); _templeResizeObs = null; }
+    if (_portalResizeObs) { _portalResizeObs.disconnect(); _portalResizeObs = null; }
     content.classList.toggle('temple-active', id === 'temple');
+    content.classList.toggle('portal-active', id === 'portal');
     switch (id) {
-      case 'portal':   content.innerHTML = _buildPortalHTML();   break;
+      case 'portal':   content.innerHTML = _buildPortalHTML();   _attachPortalEvents(); break;
       case 'exchange': content.innerHTML = _buildExchangeHTML(); break;
       case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
       case 'shop':     content.innerHTML = _buildShopHTML();     break;
@@ -114,33 +128,167 @@ const VillageUI = (() => {
 
   function _buildPortalHTML() {
     const scrolls = Portal.SCROLL_TYPES;
-    const btns = Object.entries(scrolls).map(([key, sc]) => {
+
+    const pedestals = SCROLL_POSITIONS.map(pos => {
+      const sc = scrolls[pos.type];
+      if (!sc) return '';
       const canAfford = GameState.coins >= sc.cost;
+      const oddsStr = Object.entries(sc.starWeights)
+        .filter(([, w]) => w > 0)
+        .map(([s, w]) => `${'★'.repeat(+s)} ${Math.round(w * 100)}%`)
+        .join('  ');
+
       return `
-        <button class="scroll-btn scroll-${key} ${canAfford ? '' : 'disabled'}"
-                onclick="VillageUI.openScroll('${key}')" ${canAfford ? '' : 'disabled'}>
-          <span class="scroll-icon">${sc.icon}</span>
-          <span class="scroll-info">
-            <strong>${sc.name}</strong>
-            <small>${sc.cost} 💰</small>
-          </span>
-          <span class="scroll-odds">${_fmtOdds(sc.starWeights)}</span>
-        </button>`;
+        <div class="scroll-pedestal${canAfford ? '' : ' scroll-cant-afford'}"
+             data-type="${pos.type}"
+             style="left:${pos.left}; bottom:${pos.bottom}">
+          <div class="scroll-float">
+            <img src="assets/scrolls/${pos.type}.png"
+                 class="scroll-img levitate"
+                 style="animation-delay:${pos.delay}"
+                 alt="${sc.name}">
+          </div>
+          <div class="scroll-price">${sc.cost} 💰</div>
+          <div class="scroll-odds">${oddsStr}</div>
+        </div>`;
     }).join('');
 
     return `
-      <div class="v-section-title">🌀 Портальный Круг</div>
-      <p class="v-section-desc">Открывайте свитки чтобы получать новых союзников</p>
-      <div class="portal-btns">${btns}</div>`;
+      <div class="portal-wrap${PORTAL_DEBUG ? ' portal-debug' : ''}">
+        <img class="portal-bg" src="assets/portal_bg.png" alt="Портал" draggable="false">
+        <div class="portal-zones" id="portal-zones">${pedestals}</div>
+        <div class="portal-result-overlay" id="portal-result-overlay" style="display:none">
+          <div class="portal-result-card">
+            <div id="portal-result-inner"></div>
+            <div class="portal-result-title" id="portal-result-title"></div>
+            <div class="portal-result-sub"   id="portal-result-sub"></div>
+            <button class="portal-close-btn"
+                    onclick="VillageUI.closePortalResult()">Отлично!</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Подгоняет .portal-zones под реальный размер видимой картинки
+  function _fitPortal() {
+    const img   = document.querySelector('.portal-bg');
+    const zones = document.getElementById('portal-zones');
+    const wrap  = document.querySelector('.portal-wrap');
+    if (!img || !zones || !wrap || !img.naturalWidth) return;
+
+    const wrapW  = wrap.clientWidth;
+    const wrapH  = wrap.clientHeight;
+    const aspect = img.naturalWidth / img.naturalHeight;
+
+    let rendW, rendH;
+    if (wrapW / wrapH > aspect) {
+      rendH = wrapH; rendW = wrapH * aspect;
+    } else {
+      rendW = wrapW; rendH = wrapW / aspect;
+    }
+
+    const offX = (wrapW - rendW) / 2;
+    const offY = (wrapH - rendH) / 2;
+    zones.style.left   = `${offX}px`;
+    zones.style.top    = `${offY}px`;
+    zones.style.width  = `${rendW}px`;
+    zones.style.height = `${rendH}px`;
+  }
+
+  function _attachPortalEvents() {
+    if (_portalResizeObs) { _portalResizeObs.disconnect(); _portalResizeObs = null; }
+    const wrap = document.querySelector('.portal-wrap');
+    const img  = document.querySelector('.portal-bg');
+    if (!wrap || !img) return;
+
+    if (img.complete && img.naturalWidth) {
+      _fitPortal();
+    } else {
+      img.addEventListener('load', _fitPortal, { once: true });
+    }
+    _portalResizeObs = new ResizeObserver(_fitPortal);
+    _portalResizeObs.observe(wrap);
+
+    document.querySelectorAll('.scroll-pedestal').forEach(el => {
+      el.addEventListener('click', () => VillageUI.openPortalScroll(el.dataset.type));
+    });
+  }
+
+  function openPortalScroll(type) {
+    const sc = Portal.SCROLL_TYPES[type];
+    if (!sc) return;
+    if (!GameState.spendCoins(sc.cost)) {
+      showToast(`Недостаточно монет! Нужно ${sc.cost} 💰`, 'error');
+      return;
+    }
+    _renderBalance();
+
+    // Вспышка портала
+    const wrap = document.querySelector('.portal-wrap');
+    if (wrap) {
+      wrap.classList.add('portal-flash-active');
+      setTimeout(() => wrap.classList.remove('portal-flash-active'), 700);
+    }
+
+    // Бросок и показ результата после вспышки
+    const result = Portal.rollCard(type);
+    GameState.incrementQuestProgress('open_scrolls', 1);
+    setTimeout(() => _showPortalResult(result), 700);
+  }
+
+  function _showPortalResult(result) {
+    const overlay = document.getElementById('portal-result-overlay');
+    if (!overlay) return;
+
+    let inner = '', title = '', sub = '';
+
+    if (!result) {
+      title = 'Ошибка броска';
+    } else if (result.type === 'dust') {
+      inner = `<div style="font-size:52px;margin:8px 0">✨</div>`;
+      title = `+1 пыль ★${result.stars}`;
+      sub   = 'В пуле нет подходящих карт';
+    } else {
+      const ally    = result.ally;
+      const race    = RACES[ally.race] || { label: ally.race, color:'#888', bg:'#333' };
+      const starsStr = '★'.repeat(result.stars) + '☆'.repeat(5 - result.stars);
+      inner = `
+        <div style="font-size:52px;margin:8px 0">${ally.icon || '⚔️'}</div>
+        <div style="font-size:15px;font-weight:700;color:#e8d5a0">${ally.name}</div>
+        <div style="color:#ffe066;font-size:1.15rem;margin:6px 0">${starsStr}</div>
+        <div>
+          <span style="background:${race.bg};color:${race.color};
+                       padding:2px 10px;border-radius:99px;font-size:0.72rem">
+            ${race.label}
+          </span>
+        </div>`;
+      title = result.isNew ? '✦ Новый герой!' : '↺ Уже есть в коллекции';
+      sub   = result.isNew ? ally.name : `+1 пыль ★${result.stars} добавлена`;
+    }
+
+    document.getElementById('portal-result-inner').innerHTML = inner;
+    document.getElementById('portal-result-title').textContent = title;
+    document.getElementById('portal-result-sub').textContent   = sub;
+    overlay.style.display = 'flex';
+  }
+
+  function closePortalResult() {
+    const overlay = document.getElementById('portal-result-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _renderBalance();
+    // Перестраиваем портал чтобы обновить доступность свитков
+    _showTab('portal');
+    if (CollectionUI) CollectionUI.render();
   }
 
   function _fmtOdds(weights) {
     return Object.entries(weights)
-      .filter(([,v]) => v > 0)
-      .map(([s,v]) => `★${s} ${Math.round(v*100)}%`)
+      .filter(([, v]) => v > 0)
+      .map(([s, v]) => `★${s} ${Math.round(v * 100)}%`)
       .join(' · ');
   }
 
+  // Оставляем для обратной совместимости (старый modal-портал)
   function openScroll(type) {
     const sc = Portal.SCROLL_TYPES[type];
     if (!sc) return;
@@ -636,12 +784,12 @@ const VillageUI = (() => {
 
   return {
     init, render, switchTab,
-    openScroll, confirmRecycle, doRecycle,
+    openScroll, openPortalScroll, closePortalResult,
+    confirmRecycle, doRecycle,
     buyItem, refreshShop,
     claimQuest,
     libSwitch, libSearch,
     showToast,
-    // legacy aliases for portal.js callback:
     renderBalance: _renderBalance,
   };
 })();
