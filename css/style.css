@@ -3153,13 +3153,58 @@ select { font-family: inherit; }
 }
 .fc-ft-col { font-size: 10px; }
 
-/* Грид карточек в казарме */
+/* ── BARRACKS SCREEN ──────────────────────────────────────────── */
+
+#screen-barracks {
+  position: relative;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* Фоновое изображение — абсолютное, фиксированное внутри экрана */
+.barracks-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: brightness(0.45);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Шапка с фильтрами поверх фона */
+.barracks-header {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding: 10px 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.barracks-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+/* Грид карточек — скролл поверх неподвижного фона */
 #barracks-grid {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
   padding: 16px;
-  justify-content: flex-start;
+  align-content: flex-start;
 }
 
 /* ── CARD DETAIL OVERLAY ──────────────────────────────────────── */

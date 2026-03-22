@@ -219,7 +219,8 @@
 
     <!-- ── BARRACKS SCREEN ───────────────────────────────── -->
     <div id="screen-barracks" class="screen hidden">
-      <div class="screen-header">
+      <img class="barracks-bg" src="assets/barracks_bg.png" alt="">
+      <div class="barracks-header">
         <h2>🏕️ Казарма</h2>
         <div class="filters">
           <select id="filter-race"   onchange="BarracksUI.applyFilters()">
@@ -242,7 +243,7 @@
           <div class="filter-count">Карт: <span id="barracks-card-count">50</span></div>
         </div>
       </div>
-      <div id="barracks-grid" class="card-grid"></div>
+      <div id="barracks-grid"></div>
     </div>
 
     <!-- ── INVENTORY SCREEN ──────────────────────────────── -->
