@@ -474,7 +474,7 @@ const App = {
 
   showScreen(screenId) {
     // Building tabs are rendered inside screen-village
-    const BUILDING_TABS = ['portal', 'temple', 'shop', 'exchange', 'council', 'library'];
+    const BUILDING_TABS = ['portal', 'temple', 'shop', 'exchange', 'council'];
     const isBuildingTab = BUILDING_TABS.includes(screenId);
     const domId = isBuildingTab ? 'village' : screenId;
 
@@ -519,8 +519,11 @@ const App = {
       case 'shop':
       case 'exchange':
       case 'council':
-      case 'library':
         VillageUI.switchTab(screenId);
+        break;
+      case 'library':
+        LibraryUI.render();
+        if (typeof NPCSystem !== 'undefined') NPCSystem.init('library');
         break;
     }
   },

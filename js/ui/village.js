@@ -47,7 +47,6 @@ const VillageUI = (() => {
     { id:'temple',   icon:'🏛️', label:'Храм'         },
     { id:'shop',     icon:'🛒', label:'Магазин'      },
     { id:'council',  icon:'📜', label:'Совет'        },
-    { id:'library',  icon:'📖', label:'Библиотека'   },
   ];
 
   const STAT_LABELS = {
