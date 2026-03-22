@@ -8,9 +8,10 @@ const VillageUI = (() => {
   let _tab     = 'portal';
   let _libTab  = 'allies';   // library sub-tab
   let _libSearch = '';
-  let _templeResizeObs = null;
-  let _portalResizeObs = null;
-  let _shopTimerInterval = null;
+  let _templeResizeObs    = null;
+  let _portalResizeObs    = null;
+  let _shopTimerInterval   = null;
+  let _councilTimerInterval = null;
 
   // ── Temple: тестовый режим — все артефакты видны ────────────────
   // Поставь false чтобы вернуть реальное состояние из GameState
@@ -109,18 +110,20 @@ const VillageUI = (() => {
   function _showTab(id) {
     const content = document.getElementById('v-tab-content');
     if (!content) return;
-    if (_templeResizeObs)   { _templeResizeObs.disconnect(); _templeResizeObs = null; }
-    if (_portalResizeObs)   { _portalResizeObs.disconnect(); _portalResizeObs = null; }
-    if (_shopTimerInterval) { clearInterval(_shopTimerInterval); _shopTimerInterval = null; }
-    content.classList.toggle('temple-active', id === 'temple');
-    content.classList.toggle('portal-active', id === 'portal');
-    content.classList.toggle('shop-active',   id === 'shop');
+    if (_templeResizeObs)     { _templeResizeObs.disconnect(); _templeResizeObs = null; }
+    if (_portalResizeObs)     { _portalResizeObs.disconnect(); _portalResizeObs = null; }
+    if (_shopTimerInterval)   { clearInterval(_shopTimerInterval);   _shopTimerInterval   = null; }
+    if (_councilTimerInterval){ clearInterval(_councilTimerInterval); _councilTimerInterval = null; }
+    content.classList.toggle('temple-active',  id === 'temple');
+    content.classList.toggle('portal-active',  id === 'portal');
+    content.classList.toggle('shop-active',    id === 'shop');
+    content.classList.toggle('council-active', id === 'council');
     switch (id) {
       case 'portal':   content.innerHTML = _buildPortalHTML();   _attachPortalEvents(); break;
       case 'exchange': content.innerHTML = _buildExchangeHTML(); UnitCard.attachCardClicks(content); break;
       case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
       case 'shop':     content.innerHTML = _buildShopHTML();     _attachShopEvents(); break;
-      case 'council':  content.innerHTML = _buildCouncilHTML();  break;
+      case 'council':  content.innerHTML = _buildCouncilHTML();  _attachCouncilEvents(); break;
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
     }
     // Inject back-to-village button (floats above all tab content)
@@ -658,55 +661,98 @@ const VillageUI = (() => {
   // TAB: COUNCIL
   // ================================================================
 
-  function _buildCouncilHTML() {
-    const quests = GameState.getActiveQuests();
-    const questHTML = quests.map(q => {
-      const pct     = Math.min(100, Math.round((q.progress / q.target) * 100));
-      const done    = q.progress >= q.target;
-      const claimed = q.claimed;
-      return `
-        <div class="quest-card ${claimed ? 'quest-claimed' : done ? 'quest-done' : ''}">
-          <div class="quest-label">${q.label}</div>
-          <div class="quest-progress-wrap">
-            <div class="quest-bar">
-              <div class="quest-bar-fill" style="width:${pct}%"></div>
-            </div>
-            <div class="quest-count">${q.progress}/${q.target}</div>
-          </div>
-          <div class="quest-reward">🎁 ${q.rewardLabel}</div>
-          ${claimed
-            ? '<div class="quest-claimed-label">✓ Получено</div>'
-            : done
-              ? `<button class="quest-claim-btn" onclick="VillageUI.claimQuest('${q.id}')">Получить награду!</button>`
-              : '<div class="quest-pending-label">В процессе...</div>'
-          }
-        </div>`;
-    }).join('');
+  // ── Quest helpers ─────────────────────────────────────────────
 
-    const now    = new Date();
-    const reset  = new Date();
-    reset.setHours(24, 0, 0, 0);
-    const diff   = reset - now;
-    const hh     = String(Math.floor(diff / 3600000)).padStart(2, '0');
-    const mm     = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+  const _QUEST_ICONS = {
+    complete_locations: '🗺️',
+    kill_enemies:       '⚔️',
+    open_scrolls:       '📜',
+    spend_coins:        '💰',
+    upgrade_cards:      '⬆️',
+  };
+
+  function _questState(q) {
+    if (q.claimed)              return 'done';
+    if (q.progress >= q.target) return 'claimable';
+    return 'in-progress';
+  }
+
+  function _buildQuestCard(q) {
+    const state = _questState(q);
+    const pct   = Math.min(100, Math.round((q.progress / q.target) * 100));
+    const icon  = _QUEST_ICONS[q.type] || '📋';
+
+    const btn = state === 'claimable'
+      ? `<button class="quest-btn qb-claim" onclick="VillageUI.claimQuest('${q.id}')">🎁 Забрать!</button>`
+      : state === 'done'
+        ? `<button class="quest-btn qb-done" disabled>✓ Выполнено</button>`
+        : `<button class="quest-btn qb-waiting" disabled>В процессе...</button>`;
 
     return `
-      <div class="v-section-title">📜 Совет старейшин</div>
-      <p class="v-section-desc">Ежедневные задания сбрасываются в полночь
-        — осталось <strong>${hh}:${mm}</strong></p>
-      <div class="quest-list">${questHTML}</div>`;
+      <div class="quest ${state}">
+        <div class="quest-top">
+          <div class="quest-icon">${icon}</div>
+          <div class="quest-info">
+            <div class="quest-name">${q.label}</div>
+            <div class="quest-progress">
+              <div class="qp-bar"><div class="qp-fill" style="width:${pct}%"></div></div>
+              <div class="qp-text">${q.progress} / ${q.target}</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,.05);margin:0 14px;"></div>
+        <div class="quest-bottom">
+          <div class="quest-reward">
+            <span class="reward-chip">${q.rewardLabel}</span>
+          </div>
+          ${btn}
+        </div>
+      </div>`;
+  }
+
+  function _buildCouncilHTML() {
+    const quests = GameState.getActiveQuests();
+    const questsHTML = quests.length
+      ? quests.map(q => _buildQuestCard(q)).join('')
+      : '<div class="v-empty">Нет активных заданий — зайди завтра</div>';
+
+    return `
+      <img class="building-bg" src="assets/council_bg.jpg" alt=""
+           onerror="this.style.display='none'">
+      <div class="council-wrap">
+        <div class="council-header">
+          <div class="council-title">📜 Совет старейшин</div>
+          <div class="council-timer">Сброс через <span id="council-timer-val">--:--:--</span></div>
+        </div>
+        <div class="quest-list">${questsHTML}</div>
+      </div>`;
+  }
+
+  function _attachCouncilEvents() {
+    function _tick() {
+      const el = document.getElementById('council-timer-val');
+      if (!el) { clearInterval(_councilTimerInterval); _councilTimerInterval = null; return; }
+      const now   = new Date();
+      const reset = new Date(); reset.setHours(24, 0, 0, 0);
+      const diff  = reset - now;
+      const hh = String(Math.floor(diff / 3600000)).padStart(2, '0');
+      const mm = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+      const ss = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+      el.textContent = `${hh}:${mm}:${ss}`;
+    }
+    _tick();
+    _councilTimerInterval = setInterval(_tick, 1000);
   }
 
   function claimQuest(questId) {
     const result = GameState.claimQuestReward(questId);
     if (result.ok) {
-      const r = result.reward;
-      const msg = r.type === 'coins'
-        ? `+${r.amount} монет!`
-        : `+${r.amount} пыль ★${r.star}!`;
+      const r   = result.reward;
+      const msg = r.type === 'coins' ? `+${r.amount} монет!` : `+${r.amount} пыль ★${r.star}!`;
       showToast(msg, 'success');
       _renderBalance();
       _showTab('council');
+      if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('council', 'quest_claimed');
     } else {
       showToast(result.reason, 'error');
     }

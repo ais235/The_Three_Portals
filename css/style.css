@@ -267,10 +267,10 @@ select { font-family: inherit; }
 .npc-wrap.npc-right { right: 24px; }
 
 /* Tabs: push content to the 4/5 zone opposite the NPC */
-.v-tab-content.tab-npc-left:not(.portal-active):not(.temple-active):not(.shop-active) {
+.v-tab-content.tab-npc-left:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active) {
   padding-left: 22%;
 }
-.v-tab-content.tab-npc-right:not(.portal-active):not(.temple-active):not(.shop-active) {
+.v-tab-content.tab-npc-right:not(.portal-active):not(.temple-active):not(.shop-active):not(.council-active) {
   padding-right: 22%;
 }
 
@@ -3987,4 +3987,187 @@ select { font-family: inherit; }
   font-size: 11px;
   color: rgba(255,255,255,.45);
   line-height: 1.6;
+}
+
+/* ── COUNCIL SCREEN ──────────────────────────────────────────── */
+
+.v-tab-content.council-active {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Content zone: right of NPC */
+.council-wrap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 200px;
+  right: 0;
+  overflow-y: auto;
+  padding: 62px 28px 28px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,.35) transparent;
+}
+
+.council-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.council-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #FAC775;
+  text-shadow: 0 2px 10px rgba(0,0,0,.9);
+}
+.council-timer {
+  font-size: 13px;
+  color: rgba(255,255,255,.45);
+  text-shadow: 0 1px 6px rgba(0,0,0,.8);
+}
+#council-timer-val {
+  color: #FAC775;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quest list */
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 660px;
+}
+
+/* Quest card states */
+.quest {
+  border-radius: 14px;
+  border: 1.5px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.45);
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.quest.claimable {
+  border-color: #D4AF37;
+  background: rgba(50,40,0,.5);
+  animation: q-glow 1.5s ease-in-out infinite;
+}
+.quest.done {
+  border-color: rgba(58,160,58,.5);
+  background: rgba(20,50,20,.5);
+}
+@keyframes q-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(212,175,55,.2); }
+  50%       { box-shadow: 0 0 20px rgba(212,175,55,.5); }
+}
+
+/* Quest top (icon + info) */
+.quest-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+}
+.quest-icon {
+  font-size: 30px;
+  flex-shrink: 0;
+  width: 42px;
+  text-align: center;
+}
+.quest-info { flex: 1; min-width: 0; }
+.quest-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,255,255,.9);
+  margin-bottom: 10px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.7);
+}
+
+/* Progress bar */
+.quest-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qp-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.1);
+  overflow: hidden;
+}
+.qp-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #D4AF37, #FAC775);
+  transition: width .3s ease;
+}
+.quest.done .qp-fill { background: linear-gradient(90deg, #3aa03a, #6ec96e); }
+.qp-text {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: right;
+}
+
+/* Quest bottom (reward + button) */
+.quest-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px 14px;
+  gap: 12px;
+}
+.quest-reward { display: flex; gap: 6px; flex-wrap: wrap; }
+.reward-chip {
+  padding: 3px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(212,175,55,.15);
+  border: 1px solid rgba(212,175,55,.3);
+  color: #FAC775;
+}
+.quest.done .reward-chip {
+  background: rgba(58,160,58,.12);
+  border-color: rgba(58,160,58,.3);
+  color: rgba(100,220,100,.8);
+}
+
+/* Quest action buttons */
+.quest-btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.qb-waiting {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.3);
+  cursor: default;
+}
+.qb-claim {
+  background: linear-gradient(135deg, #C8991F, #FAC775);
+  color: #1a1200;
+  box-shadow: 0 0 14px rgba(212,175,55,.35);
+}
+.qb-claim:hover {
+  background: linear-gradient(135deg, #FAC775, #FFD700);
+  box-shadow: 0 0 22px rgba(212,175,55,.6);
+  transform: translateY(-1px);
+}
+.qb-done {
+  background: rgba(58,160,58,.18);
+  color: rgba(100,220,100,.65);
+  border: 1px solid rgba(58,160,58,.3);
+  cursor: default;
 }
