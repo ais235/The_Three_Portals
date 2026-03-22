@@ -180,10 +180,10 @@ select { font-family: inherit; }
   overflow: hidden;
 }
 
-/* Шапка не скроллится */
+/* Шапка не скроллится — top padding учитывает фиксированный логотип (~56px) */
 .library-header {
   flex-shrink: 0;
-  padding: 14px 20px 10px;
+  padding: 56px 20px 10px;
   display: flex;
   align-items: center;
   gap: 12px;
