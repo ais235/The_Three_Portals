@@ -126,6 +126,11 @@ const VillageUI = (() => {
     content.insertAdjacentHTML('afterbegin',
       `<button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>`
     );
+    // Inject NPC container and init NPC
+    content.insertAdjacentHTML('beforeend',
+      `<div id="npc-container-${id}"></div>`
+    );
+    if (typeof NPCSystem !== 'undefined') NPCSystem.init(id);
   }
 
   // ================================================================
@@ -228,9 +233,12 @@ const VillageUI = (() => {
     if (!sc) return;
     if (!GameState.spendCoins(sc.cost)) {
       showToast(`Недостаточно монет! Нужно ${sc.cost} 💰`, 'error');
+      if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('portal', 'no_coins');
       return;
     }
     _renderBalance();
+
+    if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('portal', 'scroll_open_start');
 
     // Вспышка портала
     const wrap = document.querySelector('.portal-wrap');
@@ -270,6 +278,17 @@ const VillageUI = (() => {
     overlay.style.display = 'flex';
     // Навешиваем клик для просмотра детали карты
     UnitCard.attachCardClicks(document.getElementById('portal-result-inner'));
+
+    // NPC trigger based on result
+    if (typeof NPCSystem !== 'undefined') {
+      if (!result) return;
+      if (result.type === 'dust') {
+        NPCSystem.trigger('portal', 'duplicate');
+      } else {
+        const stars = result.ally?.starRange?.[0] || 1;
+        NPCSystem.trigger('portal', result.isNew ? `card_star_${stars}` : 'duplicate');
+      }
+    }
   }
 
   function closePortalResult() {
@@ -455,6 +474,17 @@ const VillageUI = (() => {
     }
     _templeResizeObs = new ResizeObserver(_fitTemple);
     _templeResizeObs.observe(wrap);
+
+    // NPC temple trigger based on artifact collection status
+    if (typeof NPCSystem !== 'undefined') {
+      setTimeout(() => {
+        const owned = Object.keys(GameState.getArtifacts ? GameState.getArtifacts() : {}).length;
+        const total = Object.keys(typeof ARTIFACTS !== 'undefined' ? ARTIFACTS : {}).length || 5;
+        if (owned === 0)           NPCSystem.trigger('temple', 'all_empty');
+        else if (owned >= total)   NPCSystem.trigger('temple', 'all_filled');
+        else                       NPCSystem.trigger('temple', 'some_filled');
+      }, 800);
+    }
   }
 
   function _fmtArtBonus(bonus) {
@@ -469,15 +499,6 @@ const VillageUI = (() => {
   // ================================================================
 
   // ── SHOP ─────────────────────────────────────────────────────────
-
-  const _NPC_PHRASES = [
-    '"Добро пожаловать! Сегодня особые цены!"',
-    '"Свежий товар только что завезли!"',
-    '"Для героев — лучшее снаряжение!"',
-    '"Не упусти редкий товар!"',
-    '"Хм, кажется тебе нужен именно этот герой..."',
-    '"Золото не спрячешь в кармане навсегда!"',
-  ];
 
   const _WEAP_LABELS = {
     meleeAtk:'Ближн.атк', meleeDef:'Ближн.защ',
@@ -496,7 +517,6 @@ const VillageUI = (() => {
     const items     = GameState.getShopItems();
     const cardItems = items.map((item, idx) => ({ ...item, _idx: idx })).filter(i => i.type === 'card');
     const weapItems = items.map((item, idx) => ({ ...item, _idx: idx })).filter(i => i.type === 'weapon');
-    const phrase    = _NPC_PHRASES[Math.floor(Math.random() * _NPC_PHRASES.length)];
 
     const unitsHTML = cardItems.map(item => {
       const ally        = ALLIES.find(a => a.id === item.id);
@@ -559,10 +579,6 @@ const VillageUI = (() => {
         <img class="shop-bg" src="assets/shop_bg.jpg" alt="">
         <div class="shop-ui">
           <div class="shop-header">
-            <div class="shop-npc-area">
-              <img src="assets/shop_npc.png" class="shop-npc-img" alt="">
-              <div class="shop-bubble" id="shop-bubble">${phrase}</div>
-            </div>
             <div class="shop-controls">
               <div class="shop-timer" id="shop-timer">🕐 Обновление через: --:--:--</div>
               <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
@@ -606,11 +622,16 @@ const VillageUI = (() => {
     if (result.ok) {
       showToast('Куплено!', 'success');
       _renderBalance();
+      const itemType = GameState.getShopItems()[idx]?.type;
+      if (typeof NPCSystem !== 'undefined') {
+        NPCSystem.trigger('shop', itemType === 'weapon' ? 'purchase_weapon' : 'purchase_card');
+      }
       _showTab('shop');
       if (BarracksUI) BarracksUI.render();
       if (InventoryUI)  InventoryUI.render();
     } else {
       showToast(result.reason, 'error');
+      if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('shop', 'not_enough_coins');
     }
   }
 
@@ -621,6 +642,7 @@ const VillageUI = (() => {
       showToast(`Магазин обновлён${costMsg}`, 'success');
       _renderBalance();
       _showTab('shop');
+      if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('shop', 'shop_refreshed');
     } else {
       showToast(result.reason, 'error');
     }

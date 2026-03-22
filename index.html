@@ -210,6 +210,7 @@
     <div id="screen-barracks" class="screen hidden">
       <img class="barracks-bg" src="assets/barracks_bg.png" alt="">
       <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <div id="npc-container-barracks"></div>
       <div class="barracks-header">
         <h2>🏕️ Казарма</h2>
         <div class="filters">
@@ -239,6 +240,7 @@
     <!-- ── INVENTORY SCREEN ──────────────────────────────── -->
     <div id="screen-inventory" class="screen hidden">
       <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <div id="npc-container-arsenal"></div>
       <div class="screen-header">
         <h2>🗡️ Инвентарь оружия</h2>
         <div class="filters">
@@ -325,6 +327,7 @@
   </div><!-- #app -->
 
   <!-- Scripts -->
+  <script src="js/npc_dialogues.js"></script>
   <script src="cards_and_weapons.js"></script>
   <script src="js/data/enemies.js"></script>
   <script src="js/data/locations.js"></script>

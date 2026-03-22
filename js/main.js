@@ -491,13 +491,25 @@ const App = {
       else hud.classList.remove('hidden');
     }
 
+    // NPC: cleanup static-screen NPCs on every navigation
+    if (typeof NPCSystem !== 'undefined') {
+      NPCSystem.cleanup('barracks');
+      NPCSystem.cleanup('arsenal');
+    }
+
     switch (screenId) {
       case 'battle':
         if (!this._skipBattleInit) this.initBattle();
         this._skipBattleInit = false;
         break;
-      case 'barracks':     BarracksUI.render();       break;
-      case 'inventory':    InventoryUI.render();      break;
+      case 'barracks':
+        BarracksUI.render();
+        if (typeof NPCSystem !== 'undefined') NPCSystem.init('barracks');
+        break;
+      case 'inventory':
+        InventoryUI.render();
+        if (typeof NPCSystem !== 'undefined') NPCSystem.init('arsenal');
+        break;
       case 'villagemap':   VillageMapUI.render();     break;
       case 'worldmap':     WorldMap.render();         break;
       case 'squad_select': SquadSelect.render();      break;

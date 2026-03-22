@@ -225,12 +225,17 @@ const BarracksUI = (() => {
   function doUpgrade(id) {
     const result = GameState.upgradeCard(id);
     if (result.ok) {
+      if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('barracks', 'card_upgraded');
       // Refresh modal in place
       const ally = ALLIES.find(a => a.id === id);
       if (ally) App.openModal(buildDetailHTML(ally));
       render();
       VillageUI.renderBalance();
     } else {
+      const isDust = result.reason && result.reason.toLowerCase().includes('пыл');
+      if (typeof NPCSystem !== 'undefined') {
+        NPCSystem.trigger('barracks', isDust ? 'no_dust' : 'no_dust');
+      }
       // Show error on button
       const btn = document.getElementById('upgrade-btn');
       if (btn) { btn.textContent = result.reason; btn.style.color = '#f66'; }
