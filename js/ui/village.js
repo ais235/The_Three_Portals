@@ -22,9 +22,9 @@ const VillageUI = (() => {
   // left/bottom — % от видимой области картинки (как PED_POSITIONS)
   // Меняй эти числа чтобы двигать тумбы по фону
   const SCROLL_POSITIONS = [
-    { type: 'bronze', left: '18%', bottom:  '8%', delay: '0s'   },
-    { type: 'silver', left: '50%', bottom: '14%', delay: '0.8s' },
-    { type: 'gold',   left: '82%', bottom:  '8%', delay: '1.6s' },
+    { type: 'bronze', left: '18%', bottom: '24%', delay: '0s'   },
+    { type: 'silver', left: '50%', bottom:  '4%', delay: '0.8s' },
+    { type: 'gold',   left: '82%', bottom: '24%', delay: '1.6s' },
   ];
 
   // ── Temple: позиции постаментов ─────────────────────────────────
@@ -133,10 +133,10 @@ const VillageUI = (() => {
       const sc = scrolls[pos.type];
       if (!sc) return '';
       const canAfford = GameState.coins >= sc.cost;
-      const oddsStr = Object.entries(sc.starWeights)
+      const oddsRows = Object.entries(sc.starWeights)
         .filter(([, w]) => w > 0)
-        .map(([s, w]) => `${'★'.repeat(+s)} ${Math.round(w * 100)}%`)
-        .join('  ');
+        .map(([s, w]) => `<div class="st-odds-row">${'★'.repeat(+s)} — ${Math.round(w * 100)}%</div>`)
+        .join('');
 
       return `
         <div class="scroll-pedestal${canAfford ? '' : ' scroll-cant-afford'}"
@@ -149,7 +149,10 @@ const VillageUI = (() => {
                  alt="${sc.name}">
           </div>
           <div class="scroll-price">${sc.cost} 💰</div>
-          <div class="scroll-odds">${oddsStr}</div>
+          <div class="scroll-tooltip">
+            <div class="st-name">${sc.name}</div>
+            ${oddsRows}
+          </div>
         </div>`;
     }).join('');
 
