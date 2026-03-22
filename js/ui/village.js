@@ -717,8 +717,7 @@ const VillageUI = (() => {
       : '<div class="v-empty">Нет активных заданий — зайди завтра</div>';
 
     return `
-      <img class="building-bg" src="assets/council_bg.jpg" alt=""
-           onerror="this.style.display='none'">
+      <img class="building-bg" src="assets/council_bg.png" alt="">
       <div class="council-wrap">
         <div class="council-header">
           <div class="council-title">📜 Совет старейшин</div>
