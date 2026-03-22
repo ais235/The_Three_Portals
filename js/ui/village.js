@@ -8,6 +8,22 @@ const VillageUI = (() => {
   let _tab     = 'portal';
   let _libTab  = 'allies';   // library sub-tab
   let _libSearch = '';
+  let _templeResizeObs = null;
+
+  // ── Temple: тестовый режим — все артефакты видны ────────────────
+  // Поставь false чтобы вернуть реальное состояние из GameState
+  const TEMPLE_SHOW_ALL = true;
+
+  // ── Temple: позиции постаментов ─────────────────────────────────
+  // left/bottom — % от видимой области картинки (как зоны в villageMap.js)
+  // Меняй эти числа чтобы расставить постаменты по фону
+  const PED_POSITIONS = [
+    { id: 'warlord_pauldron',  left: '15%', bottom: '4%'  },
+    { id: 'temple_rune',       left: '30%', bottom: '8%'  },
+    { id: 'fortress_banner',   left: '50%', bottom: '17%' },
+    { id: 'necromancer_staff', left: '67%', bottom: '8%'  },
+    { id: 'hero_crown',        left: '83%', bottom: '4%'  },
+  ];
 
   const TABS = [
     { id:'portal',   icon:'🌀', label:'Портал'      },
@@ -79,10 +95,13 @@ const VillageUI = (() => {
   function _showTab(id) {
     const content = document.getElementById('v-tab-content');
     if (!content) return;
+    // Убираем старый ResizeObserver Храма при смене вкладки
+    if (_templeResizeObs) { _templeResizeObs.disconnect(); _templeResizeObs = null; }
+    content.classList.toggle('temple-active', id === 'temple');
     switch (id) {
       case 'portal':   content.innerHTML = _buildPortalHTML();   break;
       case 'exchange': content.innerHTML = _buildExchangeHTML(); break;
-      case 'temple':   content.innerHTML = _buildTempleHTML();   break;
+      case 'temple':   content.innerHTML = _buildTempleHTML();   _attachTempleEvents(); break;
       case 'shop':     content.innerHTML = _buildShopHTML();     break;
       case 'council':  content.innerHTML = _buildCouncilHTML();  break;
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
@@ -206,47 +225,95 @@ const VillageUI = (() => {
   // ================================================================
 
   function _buildTempleHTML() {
-    const allArts    = Object.values(typeof ARTIFACTS !== 'undefined' ? ARTIFACTS : {});
-    const collected  = new Set(GameState.getArtifacts());
-    const totalBonus = typeof getTempleBonus === 'function' ? getTempleBonus() : {};
+    const artMap    = typeof ARTIFACTS !== 'undefined' ? ARTIFACTS : {};
+    const collected = new Set(GameState.getArtifacts());
+    const delays    = ['0s', '0.6s', '1.2s', '1.8s', '2.4s'];
 
-    const slots = allArts.map(art => {
-      const has = collected.has(art.id);
+    const zones = PED_POSITIONS.map((pos, i) => {
+      const art   = artMap[pos.id];
+      if (!art) return '';
+      const owned = TEMPLE_SHOW_ALL || collected.has(art.id);
+      const delay = delays[i] || '0s';
+      const shortBonus = art.bonuses && art.bonuses[0] ? art.bonuses[0] : '';
+
+      const tooltipInner = owned
+        ? `<strong>${art.name}</strong>
+           <div class="tt-source">✓ ${art.from}</div>
+           <div class="tt-bonuses">${(art.bonuses || []).join(' · ')}</div>`
+        : `<strong>${art.name}</strong>
+           <div class="tt-source">🔒 ${art.from}</div>
+           <div class="tt-lock">Победи босса</div>`;
+
       return `
-        <div class="temple-slot ${has ? 'temple-slot-owned' : 'temple-slot-locked'}">
-          <div class="ts-icon">${art.icon}</div>
-          <div class="ts-name">${art.name}</div>
-          ${has
-            ? `<div class="ts-bonus">${_fmtArtBonus(art.bonus)}</div>`
-            : `<div class="ts-lock">🔒 Не получен</div>`
-          }
-          <div class="ts-desc">${art.desc}</div>
+        <div class="ped-zone" style="left:${pos.left}; bottom:${pos.bottom}; --ped-delay:${delay}">
+          <div class="artifact-float">
+            ${owned
+              ? `<img src="assets/artifacts/${art.id}.png" class="levitate" alt="${art.name}">
+                 <div class="bonus-always">${shortBonus}</div>`
+              : `<span class="lock-icon">🔒</span>`
+            }
+          </div>
+          <img src="assets/pedestal.png" class="ped-base-img" alt="">
+          <div class="tooltip">${tooltipInner}</div>
         </div>`;
     }).join('');
 
-    const totalStr = Object.entries(totalBonus)
-      .map(([stat, val]) => `+${val} ${STAT_LABELS[stat] || stat}`)
-      .join(', ') || 'Нет активных бонусов';
-
-    const noArts = allArts.length === 0
-      ? '<div class="v-empty">Артефакты появятся после победы над боссами.</div>'
-      : '';
-
     return `
-      <div class="v-section-title">🏛️ Храм Артефактов</div>
-      <p class="v-section-desc">Артефакты с боссов усиливают ваш отряд в каждом сражении</p>
-      ${noArts}
-      <div class="temple-grid">${slots}</div>
-      <div class="temple-total">
-        <div class="temple-total-title">⚡ Бонус отряда от Храма:</div>
-        <div class="temple-total-body">${totalStr}</div>
+      <div class="temple-wrap">
+        <img class="temple-bg" src="assets/temple_bg.png" alt="Храм" draggable="false">
+        <div class="temple-ped-zones">${zones}</div>
       </div>`;
+  }
+
+  // Подгоняет .temple-ped-zones под реальные размеры видимой картинки
+  // (точно так же как _fitZones в villageMap.js)
+  function _fitTemple() {
+    const img   = document.querySelector('.temple-bg');
+    const zones = document.querySelector('.temple-ped-zones');
+    const wrap  = document.querySelector('.temple-wrap');
+    if (!img || !zones || !wrap || !img.naturalWidth) return;
+
+    const wrapW  = wrap.clientWidth;
+    const wrapH  = wrap.clientHeight;
+    const aspect = img.naturalWidth / img.naturalHeight;
+
+    let rendW, rendH;
+    if (wrapW / wrapH > aspect) {
+      rendH = wrapH;
+      rendW = wrapH * aspect;
+    } else {
+      rendW = wrapW;
+      rendH = wrapW / aspect;
+    }
+
+    const offX = (wrapW - rendW) / 2;
+    const offY = (wrapH - rendH) / 2;
+
+    zones.style.left   = `${offX}px`;
+    zones.style.top    = `${offY}px`;
+    zones.style.width  = `${rendW}px`;
+    zones.style.height = `${rendH}px`;
+  }
+
+  function _attachTempleEvents() {
+    if (_templeResizeObs) { _templeResizeObs.disconnect(); _templeResizeObs = null; }
+    const wrap = document.querySelector('.temple-wrap');
+    const img  = document.querySelector('.temple-bg');
+    if (!wrap || !img) return;
+
+    if (img.complete && img.naturalWidth) {
+      _fitTemple();
+    } else {
+      img.addEventListener('load', _fitTemple, { once: true });
+    }
+    _templeResizeObs = new ResizeObserver(_fitTemple);
+    _templeResizeObs.observe(wrap);
   }
 
   function _fmtArtBonus(bonus) {
     if (!bonus) return '';
     return Object.entries(bonus)
-      .map(([s,v]) => `+${v} ${STAT_LABELS[s] || s}`)
+      .map(([s, v]) => `+${v} ${STAT_LABELS[s] || s}`)
       .join(', ');
   }
 

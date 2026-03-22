@@ -133,7 +133,7 @@ const LOCATIONS = [
     enemies: ['temple_guardian', 'skeleton', 'ghost'], enemyCount: [1, 1], enemyBudget: [99, 99],
     rewards: {
       coins: [300, 380], weaponChance: 1.0, scrollChance: 1.0, scrollType: 'silver',
-      artifact: 'guardian_sigil',
+      artifact: 'temple_rune',
     },
     isBoss: true,
     desc: 'Каменный колосс, хранящий проход в тёмное подземелье. Стойкий и неумолимый.',
@@ -247,7 +247,7 @@ const LOCATIONS = [
     enemies: ['necromancer', 'lich', 'death_knight'], enemyCount: [1, 1], enemyBudget: [99, 99],
     rewards: {
       coins: [800, 1000], weaponChance: 1.0, scrollChance: 1.0, scrollType: 'gold',
-      artifact: 'necromancer_crown',
+      artifact: 'necromancer_staff',
     },
     isBoss: true,
     desc: 'Могущественный некромант, повелитель смерти. Финальное испытание.',
@@ -297,22 +297,37 @@ function getTempleBonus() {
 const ARTIFACTS = {
   warlord_pauldron: {
     id: 'warlord_pauldron', name: 'Наплечник Атамана', icon: '🏅',
+    from: 'Атаман Кровавый Кулак',
     desc: 'Тяжёлый наплечник лесного атамана. Дарует +8 к ближней защите.',
     bonus: { meleeDef: 8 },
+    bonuses: ['+8 Ближн. защита'],
   },
-  guardian_sigil: {
-    id: 'guardian_sigil', name: 'Печать Стража', icon: '🔮',
-    desc: 'Магическая печать каменного стража. +10 к защите от магии.',
+  temple_rune: {
+    id: 'temple_rune', name: 'Руна Стража', icon: '🔮',
+    from: 'Страж Храма',
+    desc: 'Древняя руна каменного стража. +10 к защите от магии.',
     bonus: { magicDef: 10 },
+    bonuses: ['+10 Маг. защита'],
   },
   fortress_banner: {
     id: 'fortress_banner', name: 'Знамя Крепости', icon: '🚩',
+    from: 'Командир Крепости',
     desc: 'Боевое знамя орочьей крепости. +12 к ближней атаке.',
     bonus: { meleeAtk: 12 },
+    bonuses: ['+12 Ближн. атака'],
   },
-  necromancer_crown: {
-    id: 'necromancer_crown', name: 'Корона Некроманта', icon: '👑',
-    desc: 'Тёмная корона повелителя смерти. +15 ко всем характеристикам.',
+  necromancer_staff: {
+    id: 'necromancer_staff', name: 'Посох Некроманта', icon: '🪄',
+    from: 'Некромант Морт',
+    desc: 'Тёмный посох повелителя смерти. +15 магии, +30 HP, +8 к атаке.',
     bonus: { hp: 30, meleeAtk: 8, magic: 15 },
+    bonuses: ['+30 HP', '+8 Ближн. атака', '+15 Магия'],
+  },
+  hero_crown: {
+    id: 'hero_crown', name: 'Корона Героя', icon: '👑',
+    from: 'Легендарный подвиг',
+    desc: 'Золотая корона, венчающая истинного героя. Даёт +20 ко всем атакам.',
+    bonus: { meleeAtk: 20, rangeAtk: 20, magic: 20 },
+    bonuses: ['+20 Ближн. атака', '+20 Дальн. атака', '+20 Магия'],
   },
 };

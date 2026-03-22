@@ -1022,7 +1022,13 @@ select { font-family: inherit; }
 .dust-chip.star-5 { color: #ff4; border-color: #ff4; }
 
 /* ── Village screen ─────────────────────────────────────────── */
-#screen-village { padding: 0 20px 20px; }
+#screen-village {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
 
 .village-balance-bar {
   display: flex;
@@ -1030,13 +1036,10 @@ select { font-family: inherit; }
   gap: 16px;
   flex-wrap: wrap;
   padding: 12px 16px;
-  margin-bottom: 20px;
   background: var(--bg-card);
   border-bottom: 2px solid var(--border);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  position: sticky;
-  top: 56px;
-  z-index: 10;
+  flex-shrink: 0;
 }
 .vb-coins {
   font-size: 1rem;
@@ -1486,60 +1489,149 @@ select { font-family: inherit; }
 
 /* ── TEMPLE ──────────────────────────────────────────────────── */
 
-.temple-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+/*
+  === CSS-переменные для настройки постаментов ===
+  Меняй только эти цифры:
+*/
+:root {
+  --ped-img-w:    240px;  /* ширина картинки постамента */
+  --ped-art-size: 180px;  /* ширина/высота картинки артефакта */
+  --ped-art-zone: 240px;  /* высота зоны левитации над постаментом */
 }
 
-.temple-slot {
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+/* v-tab-content без padding когда активен Храм */
+.v-tab-content.temple-active {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Обёртка — заполняет всю высоту v-tab-content */
+.temple-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #060210; /* тёмный фон для letterbox-полей */
+}
+
+/* Фоновое изображение — object-fit:contain, весь храм виден */
+.temple-bg {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Оверлей постаментов — позиционируется JS как vm-zones */
+.temple-ped-zones {
+  position: absolute;
+  /* left/top/width/height выставляются через _fitTemple() */
+}
+
+/*
+  Отдельный постамент.
+  left/bottom задаются inline-стилем из PED_POSITIONS в village.js.
+  Меняй там % чтобы двигать постаменты по картинке.
+*/
+.ped-zone {
+  position: absolute;
+  transform: translateX(-50%);  /* центрирование по left% */
+  display: flex; flex-direction: column; align-items: center;
+  width: var(--ped-img-w);
+  cursor: default;
+}
+
+/* Зона левитации артефакта над постаментом */
+.artifact-float {
+  display: flex; flex-direction: column; align-items: center;
+  height: var(--ped-art-zone);
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+/* Картинка артефакта */
+.artifact-float img {
+  width: var(--ped-art-size);
+  height: var(--ped-art-size);
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(212,175,55,.75));
+}
+
+/* Анимация левитации */
+@keyframes levitate {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+.levitate {
+  animation: levitate 3s ease-in-out infinite;
+  animation-delay: var(--ped-delay, 0s);
+}
+
+/* Подпись бонуса прямо под артефактом */
+.bonus-always {
+  font-size: 13px;
+  font-weight: 800;
+  color: #FFE566;
   text-align: center;
-  transition: all 0.2s;
+  white-space: nowrap;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 4px #000,
+    0 0 8px #000,
+    1px 1px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px  1px 0 #000;
+  background: rgba(0,0,0,0.55);
+  padding: 2px 8px;
+  border-radius: 6px;
 }
-.temple-slot-owned {
-  border-color: #b07800;
-  background: linear-gradient(160deg, #1a1200, #2a2000);
-  box-shadow: 0 0 14px rgba(176,120,0,0.25);
-}
-.temple-slot-locked { opacity: 0.5; }
 
-.ts-icon { font-size: 2.2rem; }
-.ts-name { font-size: 0.82rem; font-weight: 700; color: var(--text-main); }
-.ts-bonus {
-  font-size: 0.72rem;
-  color: var(--text-accent);
-  font-weight: 600;
+/* Замок на пустом постаменте */
+.lock-icon {
+  font-size: 26px; opacity: .35;
+  filter: grayscale(1);
+  margin-bottom: 4px;
 }
-.ts-lock { font-size: 0.72rem; color: var(--text-dim); }
-.ts-desc { font-size: 0.68rem; color: #7070a0; line-height: 1.4; }
 
-.temple-total {
-  background: var(--bg-card-2);
-  border: 2px solid #b07800;
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-top: 4px;
+/* Картинка постамента */
+.ped-base-img {
+  width: var(--ped-img-w);
+  display: block;
 }
-.temple-total-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-accent);
-  margin-bottom: 6px;
+
+/* Тултип при наведении */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%; transform: translateX(-50%) translateY(6px);
+  background: rgba(6, 2, 16, 0.94);
+  border: 1px solid rgba(212,175,55,.45);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 130px; max-width: 180px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  z-index: 30;
+  white-space: normal;
 }
-.temple-total-body {
-  font-size: 0.8rem;
-  color: var(--text-main);
-  line-height: 1.6;
+.ped-zone:hover .tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
+.tooltip strong {
+  display: block; font-size: 12px;
+  color: #D4AF37; margin-bottom: 4px;
+}
+.tt-source  { font-size: 10px; color: #888; margin-bottom: 4px; }
+.tt-bonuses { font-size: 10px; color: #ccc; line-height: 1.5; }
+.tt-lock    { font-size: 10px; color: rgba(255,255,255,.28); font-style: italic; }
 
 /* ── SHOP ────────────────────────────────────────────────────── */
 
