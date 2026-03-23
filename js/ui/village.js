@@ -598,8 +598,10 @@ const VillageUI = (() => {
           </div>
           <div class="shop-units-row" id="shop-units-row">${unitsHTML}</div>
 
-          <div class="shop-section-label">🗡️ Оружие и снаряжение</div>
-          <div class="shop-weapons-row" id="shop-weapons-row">${weaponsHTML}</div>
+          <div class="shop-weapons-section">
+            <div class="shop-section-label">🗡️ Оружие и снаряжение</div>
+            <div class="shop-weapons-row" id="shop-weapons-row">${weaponsHTML}</div>
+          </div>
         </div>
       </div>`;
   }

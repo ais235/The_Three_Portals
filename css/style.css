@@ -279,8 +279,8 @@ select { font-family: inherit; }
   border: 1.5px solid rgba(255,255,255,.22);
   border-radius: 14px 14px 14px 4px;
   padding: 18px 28px;
-  max-width: 440px; min-width: 240px;
-  font-size: 24px; color: rgba(255,255,255,.9);
+  max-width: 380px; min-width: 240px;
+  font-size: 22px; color: rgba(255,255,255,.9);
   font-style: italic; line-height: 1.5;
   text-align: center;
   transition: opacity .25s ease;
@@ -2038,10 +2038,14 @@ select { font-family: inherit; }
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 50px 20px 12px 260px; /* top 50px: очищает зону HUD (fixed top:12px) */
+  padding-top: 50px;    /* очищает зону HUD (fixed top:12px) */
+  padding-right: 14px;
+  padding-bottom: 12px;
+  padding-left: 460px !important; /* NPC + широкий пузырь (~440px) */
   overflow: hidden;
   gap: 8px;
   z-index: 1;
+  box-sizing: border-box;
 }
 
 /* Строка заголовка героев + таймер/кнопка справа */
@@ -2169,6 +2173,17 @@ select { font-family: inherit; }
   color: rgba(255,255,255,.25);
   border-color: rgba(255,255,255,.08);
   cursor: not-allowed;
+}
+
+/* Секция оружия сдвинута правее NPC+пузыря (~290px от края экрана) */
+.shop-weapons-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.shop-weapons-section .shop-section-label {
+  margin-bottom: 0;
 }
 
 /* ── Ряд оружия ── */
@@ -3512,7 +3527,7 @@ select { font-family: inherit; }
   pointer-events: none;
 }
 
-/* Шапка с фильтрами поверх фона — NPC слева занимает 22% */
+/* Шапка с фильтрами поверх фона — NPC слева ~260px + пузырь */
 .barracks-header {
   position: relative;
   z-index: 1;
@@ -3520,7 +3535,7 @@ select { font-family: inherit; }
   background: rgba(0, 0, 0, 0.55);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  padding: 10px 16px 10px 23%;
+  padding: 10px 16px 10px 280px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .barracks-header h2 {
@@ -3538,7 +3553,7 @@ select { font-family: inherit; }
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  padding: 16px 16px 16px 23%;
+  padding: 16px 16px 16px 280px;
   align-content: flex-start;
 }
 
