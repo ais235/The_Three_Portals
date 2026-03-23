@@ -534,16 +534,16 @@ const VillageUI = (() => {
       const isPurchased = item.purchased;
       const done        = isOwned || isPurchased;
       const canAfford   = !done && GameState.coins >= item.price;
-      const borderColor = done ? '#3B6D11' : canAfford ? 'rgba(255,255,255,.2)' : 'rgba(200,50,50,.3)';
       const btnText     = isPurchased ? '✓ Куплено' :
                           isOwned     ? '✓ Уже в казарме' :
                           canAfford   ? '⚔️ Нанять героя' : '💰 Недостаточно монет';
       return `
-        <div class="shop-unit-wrap">
+        <div class="shop-card-wrap">
           ${UnitCard.buildMiniCard(ally, { showLocked: done })}
-          <div class="shop-unit-footer" style="--unit-border:${borderColor}">
-            <div class="shop-unit-price">${item.price} 💰</div>
-            <button class="shop-buy-btn" ${done || !canAfford ? 'disabled' : ''}
+          <div class="shop-card-footer">
+            <span class="shop-card-price">${item.price} 💰</span>
+            <button class="shop-card-btn${canAfford ? ' can-buy' : ''}"
+                    ${done || !canAfford ? 'disabled' : ''}
                     onclick="VillageUI.buyItem(${item._idx})">
               ${btnText}
             </button>
@@ -587,13 +587,11 @@ const VillageUI = (() => {
       <div class="shop-wrap">
         <img class="shop-bg" src="assets/shop_bg.jpg" alt="">
         <div class="shop-ui">
-          <div class="shop-header">
-            <div class="shop-controls">
-              <div class="shop-timer" id="shop-timer">🕐 Обновление через: --:--:--</div>
-              <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
-                🔄 Обновить (200 💰)
-              </button>
-            </div>
+          <div class="shop-topbar">
+            <span class="shop-timer-text">🕐 Обновление через: <b id="shop-timer-val">--:--:--</b></span>
+            <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
+              🔄 Обновить (200 💰)
+            </button>
           </div>
 
           <div class="shop-section-label">⚔️ Герои</div>
@@ -611,7 +609,7 @@ const VillageUI = (() => {
     // Таймер до полуночи (ежедневное обновление)
     if (_shopTimerInterval) clearInterval(_shopTimerInterval);
     function _updateShopTimer() {
-      const el = document.getElementById('shop-timer');
+      const el = document.getElementById('shop-timer-val');
       if (!el) { clearInterval(_shopTimerInterval); return; }
       const now  = new Date();
       const midnight = new Date(now);
@@ -620,7 +618,7 @@ const VillageUI = (() => {
       const h = String(Math.floor(diffMs / 3_600_000)).padStart(2, '0');
       const m = String(Math.floor((diffMs % 3_600_000) / 60_000)).padStart(2, '0');
       const s = String(Math.floor((diffMs % 60_000) / 1000)).padStart(2, '0');
-      el.textContent = `🕐 Обновление через: ${h}:${m}:${s}`;
+      el.textContent = `${h}:${m}:${s}`;
     }
     _updateShopTimer();
     _shopTimerInterval = setInterval(_updateShopTimer, 1000);

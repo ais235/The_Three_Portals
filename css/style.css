@@ -2038,45 +2038,41 @@ select { font-family: inherit; }
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 10px 20px 10px 260px; /* left: место для NPC */
+  padding: 10px 20px 12px 260px; /* 260px под NPC слева */
   overflow: hidden;
   gap: 8px;
   z-index: 1;
 }
 
-/* Шапка: таймер + кнопка (NPC теперь absolute) */
-.shop-header {
+/* Строка таймера + кнопки обновления */
+.shop-topbar {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
-  align-items: flex-end;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2px;
 }
-/* shop-npc-area removed — NPC handled by NPCSystem (.npc-wrap) */
-.shop-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  flex-shrink: 0;
-  margin-bottom: 8px;
-}
-.shop-timer {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(255,255,255,.65);
+.shop-timer-text {
+  font-size: 13px;
+  color: rgba(255,255,255,.5);
   white-space: nowrap;
+}
+.shop-timer-text b {
+  color: rgba(255,200,100,.8);
+  font-weight: 500;
 }
 .shop-refresh-btn {
-  font-size: 14px;
-  padding: 9px 20px;
-  border-radius: 20px;
-  background: rgba(0,0,0,.65);
-  border: 1.5px solid rgba(255,255,255,.25);
-  color: rgba(255,255,255,.8);
+  font-size: 13px;
+  padding: 6px 18px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.75);
   cursor: pointer;
   font-family: inherit;
-  transition: background .15s, border-color .15s, color .15s;
   white-space: nowrap;
+  transition: all .15s;
 }
 .shop-refresh-btn:hover {
   background: rgba(212,175,55,.2);
@@ -2086,71 +2082,83 @@ select { font-family: inherit; }
 
 /* Заголовок секции */
 .shop-section-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255,255,255,.45);
-  letter-spacing: .5px;
-  margin-bottom: 8px;
+  color: rgba(255,255,255,.7);
+  text-shadow: 0 2px 8px rgba(0,0,0,.9);
+  letter-spacing: .3px;
   flex-shrink: 0;
-  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+  margin-bottom: 6px;
 }
 
-/* ── Ряд юнитов ── */
+/* ── Ряд юнитов — горизонтальный скролл ── */
 .shop-units-row {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,.3) transparent;
 }
 
 /* Компактные карточки в магазине */
-.shop-units-row .fc      { height: 260px; }
-.shop-units-row .fc-art  { height: 140px; }
-.shop-units-row .fc-med  { width: 120px; height: 120px; font-size: 56px; }
+.shop-units-row .fc      { height: 300px; }
+.shop-units-row .fc-art  { height: 130px; }
+.shop-units-row .fc-med  { width: 110px; height: 110px; font-size: 50px; }
 
-/* Обёртка юнита: карточка + футер */
-.shop-unit-wrap {
+/* Обёртка карточки: стандартная fc + footer */
+.shop-card-wrap {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
-.shop-unit-wrap .fc {
+.shop-card-wrap .fc {
   border-radius: 14px 14px 0 0;
-  cursor: default;
 }
-.shop-unit-wrap .fc:hover { transform: none; box-shadow: none; }
-
-.shop-unit-footer {
+.shop-card-footer {
   width: 200px;
-  background: rgba(0,0,0,.8);
-  border: 2px solid var(--unit-border, rgba(255,255,255,.15));
+  background: rgba(0,0,0,.75);
+  border: 2px solid rgba(255,255,255,.1);
   border-top: none;
   border-radius: 0 0 14px 14px;
-  overflow: hidden;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
 }
-.shop-unit-price {
-  padding: 6px 12px;
+.shop-card-price {
   font-size: 14px;
   font-weight: 500;
   color: #FAC775;
-  text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.shop-buy-btn {
+.shop-card-btn {
   width: 100%;
-  padding: 8px;
-  background: rgba(26,74,26,.9);
-  color: #7af07a;
-  border: none;
+  padding: 7px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
-  cursor: pointer;
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.25);
+  border: 1px solid rgba(255,255,255,.08);
+  cursor: not-allowed;
   transition: background .15s;
 }
-.shop-buy-btn:hover:not(:disabled) { background: rgba(30,100,30,.95); }
-.shop-buy-btn:disabled {
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.3);
+.shop-card-btn.can-buy {
+  background: rgba(58,160,58,.35);
+  color: #90e090;
+  border-color: rgba(58,160,58,.6);
+  cursor: pointer;
+}
+.shop-card-btn.can-buy:hover { background: rgba(58,160,58,.5); }
+.shop-card-btn:disabled {
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.25);
+  border-color: rgba(255,255,255,.08);
   cursor: not-allowed;
 }
 
@@ -4185,16 +4193,25 @@ select { font-family: inherit; }
   overflow: hidden;
 }
 
-/* Top belt: horizontal card scroll, height ~50% */
-.exchange-top {
+/* Main content area — sits to the right of the NPC (22% wide) */
+.exchange-main {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 320px;
-  padding: 46px 14px 10px 200px; /* top clears logo; left 200px clears NPC */
+  top: 0; right: 0; bottom: 0;
+  left: 22%;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  background: rgba(0,0,0,.12);
+  padding-top: 46px; /* clear HUD logo */
+}
+
+/* Top block: card grid with vertical scroll */
+.exchange-top {
+  flex: 0 0 56%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 14px 10px 14px;
+  border-bottom: 2px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.14);
+  overflow: hidden;
 }
 .exchange-top-header {
   flex-shrink: 0;
@@ -4209,7 +4226,7 @@ select { font-family: inherit; }
   color: rgba(255,255,255,.65);
   flex-shrink: 0;
 }
-.ex-filters { display: flex; gap: 5px; }
+.ex-filters { display: flex; gap: 5px; flex-wrap: wrap; }
 .ef {
   padding: 3px 10px;
   border-radius: 10px;
@@ -4225,22 +4242,17 @@ select { font-family: inherit; }
   border-color: rgba(80,160,40,.5);
   color: #90e050;
 }
-.ex-scroll-hint {
-  margin-left: auto;
-  font-size: 10px;
-  color: rgba(255,255,255,.2);
-  font-style: italic;
-}
 
-/* Horizontal card scroll */
+/* Card grid — wraps and scrolls vertically, cards fully visible */
 .exchange-cards-row {
   flex: 1;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  align-items: flex-start;
-  padding-bottom: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: flex-start;
+  padding-bottom: 6px;
   scrollbar-width: thin;
   scrollbar-color: rgba(80,160,40,.3) transparent;
 }
@@ -4249,7 +4261,6 @@ select { font-family: inherit; }
   color: rgba(255,255,255,.25);
   font-style: italic;
   padding: 40px 20px;
-  white-space: nowrap;
 }
 
 /* Cards inside the row — full .fc size, no shrink */
@@ -4280,31 +4291,32 @@ select { font-family: inherit; }
   z-index: 10;
 }
 
-/* Bottom belt: cauldron + queue, starts after NPC zone */
+/* Bottom block: cauldron (left) + queue (right) */
 .exchange-bottom {
-  position: absolute;
-  top: 320px; left: 190px; right: 0; bottom: 0;
+  flex: 1;
   display: flex;
+  overflow: hidden;
   border-top: 1px solid rgba(255,255,255,.06);
 }
 
-/* Cauldron zone */
+/* Left panel: cauldron image + brew button + dust preview */
 .ex-cauldron-zone {
-  width: 240px;
+  width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
-  border-right: 1px solid rgba(255,255,255,.06);
+  padding: 14px 16px;
+  border-right: 2px solid rgba(255,255,255,.07);
+  background: rgba(0,0,0,.1);
 }
 .ex-cauldron {
-  font-size: 70px;
+  font-size: 72px;
   line-height: 1;
   animation: ex-bob 3s ease-in-out infinite;
-  filter: drop-shadow(0 4px 12px rgba(40,200,40,.3));
+  filter: drop-shadow(0 4px 14px rgba(40,200,40,.35));
 }
 @keyframes ex-bob {
   0%, 100% { transform: translateY(0); }
@@ -4346,59 +4358,17 @@ select { font-family: inherit; }
   transform: translateY(-1px);
 }
 
-/* Queue + dust result */
-.ex-queue-zone {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 10px 14px;
-  gap: 6px;
-  overflow: hidden;
-}
-.ex-queue-label {
-  font-size: 11px;
-  color: rgba(255,255,255,.4);
-  flex-shrink: 0;
-}
-.ex-queue-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.1) transparent;
-}
-.ex-queue-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 8px;
-  background: rgba(226,75,74,.08);
-  border: 1px solid rgba(226,75,74,.18);
-}
-.ex-qi-icon { font-size: 16px; flex-shrink: 0; }
-.ex-qi-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.8); }
-.ex-qi-dust { font-size: 9px; color: rgba(212,175,55,.7); }
-.ex-qi-rm {
-  font-size: 11px;
-  color: rgba(255,80,80,.4);
-  cursor: pointer;
-  padding: 2px 4px;
-  margin-left: auto;
-}
-.ex-qi-rm:hover { color: rgba(255,80,80,.8); }
-.ex-queue-empty {
+/* Dust label + result block — inside cauldron zone, below button */
+.ex-dust-label {
   font-size: 10px;
-  color: rgba(255,255,255,.2);
-  font-style: italic;
-  padding: 4px 0;
+  color: rgba(255,255,255,.35);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+  align-self: flex-start;
 }
-
-/* Dust result — stacked rows per star */
 .ex-dust-result {
-  flex-shrink: 0;
+  align-self: stretch;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(212,175,55,.06);
@@ -4408,15 +4378,72 @@ select { font-family: inherit; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 0;
-  font-size: 11px;
+  padding: 3px 0;
+  font-size: 12px;
 }
-.ex-dr-star { color: rgba(255,255,255,.4); }
-.ex-dr-val  { color: #D4AF37; font-weight: 500; }
+.ex-dr-star { color: rgba(255,255,255,.5); }
+.ex-dr-val  { color: #D4AF37; font-weight: 600; }
 .ex-dr-divider { height: 1px; background: rgba(255,255,255,.06); margin: 3px 0; }
 .ex-dr-empty {
   font-size: 10px;
   color: rgba(255,255,255,.2);
   text-align: center;
   font-style: italic;
+}
+
+/* Right panel: selected cards queue */
+.ex-queue-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  gap: 6px;
+  overflow: hidden;
+  background: rgba(0,0,0,.07);
+}
+.ex-queue-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.45);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ex-queue-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.ex-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(226,75,74,.08);
+  border: 1px solid rgba(226,75,74,.18);
+}
+.ex-qi-icon { font-size: 18px; flex-shrink: 0; }
+.ex-qi-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.8); }
+.ex-qi-dust { font-size: 9px; color: rgba(212,175,55,.7); }
+.ex-qi-rm {
+  font-size: 12px;
+  color: rgba(255,80,80,.4);
+  cursor: pointer;
+  padding: 2px 5px;
+  margin-left: auto;
+  border-radius: 4px;
+  transition: color .15s;
+}
+.ex-qi-rm:hover { color: rgba(255,80,80,.9); }
+.ex-queue-empty {
+  font-size: 11px;
+  color: rgba(255,255,255,.2);
+  font-style: italic;
+  padding: 12px 0;
+  text-align: center;
 }
