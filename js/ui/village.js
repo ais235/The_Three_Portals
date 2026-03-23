@@ -587,14 +587,15 @@ const VillageUI = (() => {
       <div class="shop-wrap">
         <img class="shop-bg" src="assets/shop_bg.jpg" alt="">
         <div class="shop-ui">
-          <div class="shop-topbar">
-            <span class="shop-timer-text">🕐 Обновление через: <b id="shop-timer-val">--:--:--</b></span>
-            <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
-              🔄 Обновить (200 💰)
-            </button>
+          <div class="shop-heroes-header">
+            <div class="shop-section-label">⚔️ Герои</div>
+            <div class="shop-topbar">
+              <span class="shop-timer-text">🕐 Обновление через: <b id="shop-timer-val">--:--:--</b></span>
+              <button class="shop-refresh-btn" onclick="VillageUI.refreshShop()">
+                🔄 Обновить (200 💰)
+              </button>
+            </div>
           </div>
-
-          <div class="shop-section-label">⚔️ Герои</div>
           <div class="shop-units-row" id="shop-units-row">${unitsHTML}</div>
 
           <div class="shop-section-label">🗡️ Оружие и снаряжение</div>
