@@ -760,7 +760,7 @@ const WEAPONS = [
 
   {
     id: 'short_sword', name: 'Короткий меч', icon: '⚔️',
-    type: 'melee', rarity: 'common',
+    type: 'melee', slot: 'weapon', rarity: 'common',
     bonuses: { meleeAtk: 7 },
     special: null,
     compatibleClasses: ['tank','spearman','damage'],
@@ -769,7 +769,7 @@ const WEAPONS = [
   },
   {
     id: 'long_sword', name: 'Длинный меч', icon: '⚔️',
-    type: 'melee', rarity: 'common',
+    type: 'melee', slot: 'weapon', rarity: 'common',
     bonuses: { meleeAtk: 10 },
     special: null,
     compatibleClasses: ['tank','spearman','damage'],
@@ -778,7 +778,7 @@ const WEAPONS = [
   },
   {
     id: 'wooden_shield', name: 'Деревянный щит', icon: '🛡',
-    type: 'acc_armor', rarity: 'common',
+    type: 'acc_armor', slot: 'accessory', rarity: 'common',
     bonuses: { meleeDef: 6 },
     special: null,
     compatibleClasses: ['tank','spearman','damage'],
@@ -787,7 +787,7 @@ const WEAPONS = [
   },
   {
     id: 'iron_shield', name: 'Железный щит', icon: '🛡',
-    type: 'acc_armor', rarity: 'common',
+    type: 'acc_armor', slot: 'accessory', rarity: 'common',
     bonuses: { meleeDef: 9, rangeDef: 3 },
     special: null,
     compatibleClasses: ['tank','spearman','damage','crossbowman'],
@@ -796,7 +796,7 @@ const WEAPONS = [
   },
   {
     id: 'hunting_bow', name: 'Охотничий лук', icon: '🏹',
-    type: 'ranged', rarity: 'common',
+    type: 'ranged', slot: 'weapon', rarity: 'common',
     bonuses: { rangeAtk: 8 },
     special: null,
     compatibleClasses: ['archer'],
@@ -805,7 +805,7 @@ const WEAPONS = [
   },
   {
     id: 'short_crossbow', name: 'Лёгкий арбалет', icon: '⚙️',
-    type: 'ranged', rarity: 'common',
+    type: 'ranged', slot: 'weapon', rarity: 'common',
     bonuses: { rangeAtk: 10 },
     special: null,
     compatibleClasses: ['crossbowman'],
@@ -814,7 +814,7 @@ const WEAPONS = [
   },
   {
     id: 'apprentice_staff', name: 'Посох ученика', icon: '🪄',
-    type: 'magic', rarity: 'common',
+    type: 'magic', slot: 'weapon', rarity: 'common',
     bonuses: { magic: 7 },
     special: null,
     compatibleClasses: ['mage_aoe','mage_single','mage_healer','mage_buffer','mage_debuff'],
@@ -823,7 +823,7 @@ const WEAPONS = [
   },
   {
     id: 'leather_gloves', name: 'Кожаные перчатки', icon: '🧤',
-    type: 'acc_speed', rarity: 'common',
+    type: 'acc_speed', slot: 'accessory', rarity: 'common',
     bonuses: { initiative: 0.8 },
     special: null,
     compatibleClasses: ['archer','damage','spearman'],
@@ -835,7 +835,7 @@ const WEAPONS = [
 
   {
     id: 'battle_axe', name: 'Боевой топор', icon: '🪓',
-    type: 'melee', rarity: 'rare',
+    type: 'melee', slot: 'weapon', rarity: 'rare',
     bonuses: { meleeAtk: 16 },
     special: { desc: 'Критический удар: 8% шанс ×1.8 урона.', effect: 'crit_8pct' },
     compatibleClasses: ['damage','spearman'],
@@ -844,7 +844,7 @@ const WEAPONS = [
   },
   {
     id: 'crusader_sword', name: 'Меч крестоносца', icon: '✝️',
-    type: 'melee', rarity: 'rare',
+    type: 'melee', slot: 'weapon', rarity: 'rare',
     bonuses: { meleeAtk: 14, magicDef: 5 },
     special: { desc: '+10% урона по нежити и демонам.', effect: 'holy_dmg_undead' },
     compatibleClasses: ['tank','damage'],
@@ -853,7 +853,7 @@ const WEAPONS = [
   },
   {
     id: 'battle_shield', name: 'Боевой щит', icon: '🛡',
-    type: 'acc_armor', rarity: 'rare',
+    type: 'acc_armor', slot: 'accessory', rarity: 'rare',
     bonuses: { meleeDef: 12, hp: 10 },
     special: null,
     compatibleClasses: ['tank','spearman','damage'],
@@ -862,7 +862,7 @@ const WEAPONS = [
   },
   {
     id: 'elven_bow', name: 'Эльфийский лук', icon: '🌿',
-    type: 'ranged', rarity: 'rare',
+    type: 'ranged', slot: 'weapon', rarity: 'rare',
     bonuses: { rangeAtk: 14, initiative: 0.5 },
     special: { desc: 'Раз в 3 хода: третий выстрел бесплатно.', effect: 'bonus_shot_3turns' },
     compatibleClasses: ['archer'],
@@ -871,7 +871,7 @@ const WEAPONS = [
   },
   {
     id: 'crossbow_heavy', name: 'Тяжёлый арбалет', icon: '⚙️',
-    type: 'ranged', rarity: 'rare',
+    type: 'ranged', slot: 'weapon', rarity: 'rare',
     bonuses: { rangeAtk: 16 },
     special: { desc: 'Тяжёлый болт: пробивает 25% защиты.', effect: 'armor_pierce_25' },
     compatibleClasses: ['crossbowman'],
@@ -880,7 +880,7 @@ const WEAPONS = [
   },
   {
     id: 'mage_wand', name: 'Волшебная палочка', icon: '🪄',
-    type: 'magic', rarity: 'rare',
+    type: 'magic', slot: 'weapon', rarity: 'rare',
     bonuses: { magic: 12, mana: 15 },
     special: null,
     compatibleClasses: ['mage_aoe','mage_single','mage_healer','mage_buffer','mage_debuff'],
@@ -889,7 +889,7 @@ const WEAPONS = [
   },
   {
     id: 'healers_focus', name: 'Фокус целителя', icon: '💎',
-    type: 'magic', rarity: 'rare',
+    type: 'magic', slot: 'weapon', rarity: 'rare',
     bonuses: { magic: 8, mana: 20 },
     special: { desc: 'Заклинания лечения +15% эффективности.', effect: 'heal_boost_15' },
     compatibleClasses: ['mage_healer'],
@@ -898,7 +898,7 @@ const WEAPONS = [
   },
   {
     id: 'magic_ring', name: 'Кольцо магии', icon: '💍',
-    type: 'acc_magic', rarity: 'rare',
+    type: 'acc_magic', slot: 'accessory', rarity: 'rare',
     bonuses: { magicDef: 8, mana: 20 },
     special: null,
     compatibleClasses: ['mage_aoe','mage_single','mage_healer','mage_buffer','mage_debuff','magic_beast'],
@@ -907,7 +907,7 @@ const WEAPONS = [
   },
   {
     id: 'iron_helm', name: 'Железный шлем', icon: '⛑️',
-    type: 'acc_armor', rarity: 'rare',
+    type: 'acc_armor', slot: 'accessory', rarity: 'rare',
     bonuses: { meleeDef: 10, hp: 12 },
     special: null,
     compatibleClasses: ['tank','damage'],
@@ -916,7 +916,7 @@ const WEAPONS = [
   },
   {
     id: 'swift_boots', name: 'Быстрые сапоги', icon: '👟',
-    type: 'acc_speed', rarity: 'rare',
+    type: 'acc_speed', slot: 'accessory', rarity: 'rare',
     bonuses: { initiative: 1.2 },
     special: { desc: 'Первый ход боя: +2 к инициативе.', effect: 'first_turn_init_plus2' },
     compatibleClasses: ['archer','damage','spearman'],
@@ -928,7 +928,7 @@ const WEAPONS = [
 
   {
     id: 'war_hammer', name: 'Боевой молот', icon: '🔨',
-    type: 'melee', rarity: 'epic',
+    type: 'melee', slot: 'weapon', rarity: 'epic',
     bonuses: { meleeAtk: 20 },
     special: { desc: '20% шанс оглушить цель на 1 ход.', effect: 'stun_20pct' },
     compatibleClasses: ['tank','damage'],
@@ -937,7 +937,7 @@ const WEAPONS = [
   },
   {
     id: 'spear_master', name: 'Копьё мастера', icon: '🗡️',
-    type: 'melee', rarity: 'epic',
+    type: 'melee', slot: 'weapon', rarity: 'epic',
     bonuses: { meleeAtk: 18 },
     special: { desc: 'Копейщик теперь достаёт до колонки 3 (маги врага).', effect: 'reach_col3' },
     compatibleClasses: ['spearman'],
@@ -946,7 +946,7 @@ const WEAPONS = [
   },
   {
     id: 'chaos_orb', name: 'Шар хаоса', icon: '🔮',
-    type: 'magic', rarity: 'epic',
+    type: 'magic', slot: 'weapon', rarity: 'epic',
     bonuses: { magic: 18, mana: 10 },
     special: { desc: 'Все заклинания стоят на 10% меньше маны.', effect: 'spell_cost_reduce_10' },
     compatibleClasses: ['mage_aoe','mage_single','mage_debuff'],
@@ -955,7 +955,7 @@ const WEAPONS = [
   },
   {
     id: 'spirit_staff', name: 'Посох духов', icon: '🌀',
-    type: 'magic', rarity: 'epic',
+    type: 'magic', slot: 'weapon', rarity: 'epic',
     bonuses: { magic: 14, mana: 25 },
     special: { desc: 'Заклинания лечения +25% эффективности.', effect: 'heal_boost_25' },
     compatibleClasses: ['mage_healer','mage_buffer'],
@@ -964,7 +964,7 @@ const WEAPONS = [
   },
   {
     id: 'dragonscale_armor', name: 'Чешуйчатый доспех', icon: '🐉',
-    type: 'acc_armor', rarity: 'epic',
+    type: 'acc_armor', slot: 'accessory', rarity: 'epic',
     bonuses: { meleeDef: 15, rangeDef: 12, magicDef: 8 },
     special: { desc: '+15% к физической защите от любых источников.', effect: 'phys_def_plus_15pct' },
     compatibleClasses: ['tank','damage'],
@@ -973,7 +973,7 @@ const WEAPONS = [
   },
   {
     id: 'speed_boots_epic', name: 'Сапоги скорости', icon: '⚡',
-    type: 'acc_speed', rarity: 'epic',
+    type: 'acc_speed', slot: 'accessory', rarity: 'epic',
     bonuses: { initiative: 1.8 },
     special: { desc: 'При HP > 70% — +1 дополнительная инициатива.', effect: 'init_bonus_high_hp' },
     compatibleClasses: ['archer','damage','spearman'],
@@ -982,7 +982,7 @@ const WEAPONS = [
   },
   {
     id: 'amulet_fortitude', name: 'Амулет стойкости', icon: '📿',
-    type: 'acc_magic', rarity: 'epic',
+    type: 'acc_magic', slot: 'accessory', rarity: 'epic',
     bonuses: { hp: 22, magicDef: 8 },
     special: { desc: 'Восстанавливает 4 HP в начале каждого хода.', effect: 'regen_4_per_turn' },
     compatibleClasses: ['tank','mage_healer','mage_buffer'],
@@ -991,7 +991,7 @@ const WEAPONS = [
   },
   {
     id: 'sniper_crossbow', name: 'Снайперский арбалет', icon: '🎯',
-    type: 'ranged', rarity: 'epic',
+    type: 'ranged', slot: 'weapon', rarity: 'epic',
     bonuses: { rangeAtk: 22 },
     special: { desc: 'Штрафы дальности вдвое меньше. Кол.3 теперь −25% вместо −50%.', effect: 'range_penalty_half' },
     compatibleClasses: ['crossbowman'],
@@ -1003,7 +1003,7 @@ const WEAPONS = [
 
   {
     id: 'dragon_bow', name: 'Лук Дракона', icon: '🐲',
-    type: 'ranged', rarity: 'legendary',
+    type: 'ranged', slot: 'weapon', rarity: 'legendary',
     bonuses: { rangeAtk: 28, initiative: 1.0 },
     special: { desc: '10% шанс: выстрел поджигает цель — 10 урона/ход × 3 хода.', effect: 'fire_arrow_10pct' },
     compatibleClasses: ['archer','crossbowman'],
@@ -1012,7 +1012,7 @@ const WEAPONS = [
   },
   {
     id: 'necro_staff', name: 'Посох Некроманта', icon: '💀',
-    type: 'magic', rarity: 'legendary',
+    type: 'magic', slot: 'weapon', rarity: 'legendary',
     bonuses: { magic: 26, mana: 30 },
     special: { desc: 'Каждое заклинание лечит мага на 12% нанесённого урона.', effect: 'spell_lifesteal_12' },
     compatibleClasses: ['mage_aoe','mage_single','mage_debuff'],
@@ -1021,7 +1021,7 @@ const WEAPONS = [
   },
   {
     id: 'legend_crown', name: 'Корона героя', icon: '👑',
-    type: 'universal', rarity: 'legendary',
+    type: 'universal', slot: 'accessory', rarity: 'legendary',
     bonuses: { hp: 30, magicDef: 10, initiative: 1.0 },
     special: { desc: 'Подходит любому классу. +8 ко всем видам защиты.', effect: 'all_def_plus_8' },
     compatibleClasses: ['tank','spearman','damage','archer','crossbowman','mage_aoe','mage_single','mage_healer','mage_buffer','mage_debuff'],
@@ -1030,7 +1030,7 @@ const WEAPONS = [
   },
   {
     id: 'ancient_spear', name: 'Древнее копьё', icon: '✨',
-    type: 'melee', rarity: 'legendary',
+    type: 'melee', slot: 'weapon', rarity: 'legendary',
     bonuses: { meleeAtk: 28 },
     special: { desc: 'Копейщик атакует все три колонки врагов. Пронзает до 30% защиты.', effect: 'reach_all_cols_pierce30' },
     compatibleClasses: ['spearman'],
@@ -1039,7 +1039,7 @@ const WEAPONS = [
   },
   {
     id: 'guardian_armor', name: 'Доспех Хранителя', icon: '⚜️',
-    type: 'acc_armor', rarity: 'legendary',
+    type: 'acc_armor', slot: 'accessory', rarity: 'legendary',
     bonuses: { meleeDef: 20, rangeDef: 16, hp: 35 },
     special: { desc: 'Получает не более 20% maxHP за один удар.', effect: 'dmg_cap_20pct_max_hp' },
     compatibleClasses: ['tank','damage'],

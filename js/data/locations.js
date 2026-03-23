@@ -12,6 +12,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_1', name: 'Крысиные норы', zone: 1,
+    orderX: 1, icon: '🐀',
     maxStars: 1, maxUnits: 3,
     pos: { row: 0, col: 1 },
     requires: [], requiresAny: false,
@@ -24,6 +25,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_2', name: 'Паутинные туннели', zone: 1,
+    orderX: 2, icon: '🕷️',
     maxStars: 1, maxUnits: 3,
     pos: { row: 1, col: 1 },
     requires: ['loc_1'], requiresAny: false,
@@ -36,6 +38,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_3a', name: 'Змеиные гнёзда', zone: 1,
+    orderX: 3, icon: '🐍',
     maxStars: 1, maxUnits: 4,
     pos: { row: 2, col: 0 },
     requires: ['loc_2'], requiresAny: false,
@@ -48,6 +51,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_3b', name: 'Опушка леса', zone: 1,
+    orderX: 4, icon: '🌿',
     maxStars: 2, maxUnits: 4,
     pos: { row: 2, col: 2 },
     requires: ['loc_2'], requiresAny: false,
@@ -60,6 +64,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_4', name: 'Лесная тропа', zone: 1,
+    orderX: 5, icon: '🌲',
     maxStars: 2, maxUnits: 5,
     pos: { row: 3, col: 1 },
     requires: ['loc_3a', 'loc_3b'], requiresAny: true,
@@ -72,6 +77,7 @@ const LOCATIONS = [
 
   {
     id: 'boss_z1', name: 'Атаман Кровавый Кулак', zone: 1,
+    orderX: 6, icon: '👊',
     maxStars: 2, maxUnits: 5,
     pos: { row: 4, col: 1 },
     requires: ['loc_4'], requiresAny: false,
@@ -91,6 +97,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_5', name: 'Разбойный стан', zone: 2,
+    orderX: 1, icon: '⚔️',
     maxStars: 2, maxUnits: 5,
     pos: { row: 5, col: 0 },
     requires: ['boss_z1'], requiresAny: false,
@@ -103,6 +110,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_6', name: 'Заброшенный храм', zone: 2,
+    orderX: 2, icon: '🏚️',
     maxStars: 3, maxUnits: 6,
     pos: { row: 5, col: 2 },
     requires: ['boss_z1'], requiresAny: false,
@@ -115,6 +123,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_7', name: 'Горный перевал', zone: 2,
+    orderX: 3, icon: '⛰️',
     maxStars: 3, maxUnits: 6,
     pos: { row: 6, col: 1 },
     requires: ['loc_5', 'loc_6'], requiresAny: true,
@@ -127,6 +136,7 @@ const LOCATIONS = [
 
   {
     id: 'boss_z2', name: 'Страж Храма', zone: 2,
+    orderX: 4, icon: '🗿',
     maxStars: 3, maxUnits: 6,
     pos: { row: 7, col: 1 },
     requires: ['loc_7'], requiresAny: false,
@@ -146,6 +156,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_8', name: 'Пещера троллей', zone: 3,
+    orderX: 1, icon: '🪨',
     maxStars: 3, maxUnits: 6,
     pos: { row: 8, col: 0 },
     requires: ['boss_z2'], requiresAny: false,
@@ -158,6 +169,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_9', name: 'Логово нежити', zone: 3,
+    orderX: 2, icon: '💀',
     maxStars: 4, maxUnits: 6,
     pos: { row: 8, col: 2 },
     requires: ['boss_z2'], requiresAny: false,
@@ -170,6 +182,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_10', name: 'Крепость орков', zone: 3,
+    orderX: 3, icon: '🏰',
     maxStars: 4, maxUnits: 6,
     pos: { row: 9, col: 1 },
     requires: ['loc_8', 'loc_9'], requiresAny: true,
@@ -182,6 +195,7 @@ const LOCATIONS = [
 
   {
     id: 'boss_z3', name: 'Командир крепости', zone: 3,
+    orderX: 4, icon: '⚔️',
     maxStars: 4, maxUnits: 6,
     pos: { row: 10, col: 1 },
     requires: ['loc_10'], requiresAny: false,
@@ -201,6 +215,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_11', name: 'Тёмный лес', zone: 4,
+    orderX: 1, icon: '🌑',
     maxStars: 4, maxUnits: 6,
     pos: { row: 11, col: 0 },
     requires: ['boss_z3'], requiresAny: false,
@@ -213,6 +228,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_12', name: 'Замок некроманта', zone: 4,
+    orderX: 2, icon: '🏯',
     maxStars: 5, maxUnits: 6,
     pos: { row: 11, col: 2 },
     requires: ['boss_z3'], requiresAny: false,
@@ -225,6 +241,7 @@ const LOCATIONS = [
 
   {
     id: 'loc_gateway', name: 'Тронный зал', zone: 4,
+    orderX: 3, icon: '👑',
     maxStars: 5, maxUnits: 6,
     pos: { row: 12, col: 1 },
     requires: ['loc_11', 'loc_12'], requiresAny: true,
@@ -241,6 +258,7 @@ const LOCATIONS = [
 
   {
     id: 'boss_final', name: 'Некромант Морт', zone: 5,
+    orderX: 1, icon: '☠️',
     maxStars: 5, maxUnits: 6,
     pos: { row: 13, col: 1 },
     requires: ['loc_gateway'], requiresAny: false,

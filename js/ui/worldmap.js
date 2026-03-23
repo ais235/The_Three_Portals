@@ -1,272 +1,262 @@
 // ================================================================
-// WORLDMAP UI — Карта мира
+// WORLDMAP UI — Карта мира (зонный режим)
 // ================================================================
 
-const WorldMap = (() => {
-  // Grid cell dimensions (px)
-  const CELL_W  = 180;
-  const CELL_H  = 115;
-  const NODE_W  = 128;
-  const NODE_H  = 76;
-  const COLS    = 3;       // map uses col indices 0, 1, 2
-  const MAX_ROW = 13;      // boss_final row index
+const WorldMap = {
+  currentZone: 1,
+  totalZones: 5,
 
-  let selectedLoc = null;
+  /** Фоны зон — PNG/JPG; если файла нет, подставится BG_FALLBACK */
+  BG_FALLBACK: 'assets/building-bg.png',
 
-  // ── Init ──────────────────────────────────────────────────────
+  ZONE_META: {
+    1: { name: 'Лесные предместья', bg: 'assets/zones/zone1.png', label: 'ЗОНА 1' },
+    2: { name: 'Горный перевал',    bg: 'assets/zones/zone2.png', label: 'ЗОНА 2' },
+    3: { name: 'Тёмный лес',        bg: 'assets/zones/zone3.png', label: 'ЗОНА 3' },
+    4: { name: 'Крепость орков',    bg: 'assets/zones/zone4.png', label: 'ЗОНА 4' },
+    5: { name: 'Замок некроманта',  bg: 'assets/zones/zone5.png', label: 'ЗОНА 5' },
+  },
 
-  function init() { /* called by App.init */ }
+  init() { /* called by App.init */ },
 
-  // ── Render ────────────────────────────────────────────────────
+  /** Смена фона с плавным появлением (кнопки ‹ › между зонами). */
+  _applyZoneBackground(nextSrc) {
+    const bg = document.getElementById('zone-bg');
+    if (!bg) return;
 
-  function render() {
-    _renderMap();
-    _renderPanel(null);
-  }
-
-  function _renderMap() {
-    const container = document.getElementById('wm-map-container');
-    if (!container) return;
-
-    const totalH = (MAX_ROW + 1) * CELL_H + 20;
-    const totalW = COLS * CELL_W;
-
-    container.innerHTML = '';
-    container.style.position = 'relative';
-    container.style.width    = totalW + 'px';
-    container.style.height   = totalH + 'px';
-    container.style.minWidth = totalW + 'px';
-
-    // Zone background bands
-    _renderZoneBands(container, totalW, totalH);
-
-    // SVG connector layer (below nodes)
-    const svg = _buildSVG(totalW, totalH);
-    container.appendChild(svg);
-
-    // Nodes
-    const completed = GameState.getUnlocked ? [] : [];
-    LOCATIONS.forEach(loc => {
-      const state = _nodeState(loc);
-      const node  = _buildNode(loc, state);
-      container.appendChild(node);
-    });
-
-    // Draw SVG lines after nodes exist (positions calculable)
-    _drawConnectors(svg);
-  }
-
-  // ── Zone bands ────────────────────────────────────────────────
-
-  function _renderZoneBands(container, totalW) {
-    const zoneRows = [
-      { zones: [1], rowStart: 0, rowEnd: 4  },
-      { zones: [2], rowStart: 5, rowEnd: 7  },
-      { zones: [3], rowStart: 8, rowEnd: 10 },
-      { zones: [4], rowStart: 11, rowEnd: 12 },
-      { zones: [5], rowStart: 13, rowEnd: 13 },
-    ];
-
-    zoneRows.forEach(({ zones, rowStart, rowEnd }) => {
-      const meta = ZONE_META[zones[0]];
-      const band = document.createElement('div');
-      band.className   = 'wm-zone-band';
-      band.style.top   = (rowStart * CELL_H) + 'px';
-      band.style.height = ((rowEnd - rowStart + 1) * CELL_H) + 'px';
-      band.style.width  = totalW + 'px';
-      band.style.background = meta.color;
-      band.style.borderTop  = `2px solid ${meta.borderColor}`;
-
-      const label = document.createElement('div');
-      label.className = 'wm-zone-label';
-      label.textContent = meta.icon + ' ' + meta.label;
-      band.appendChild(label);
-      container.appendChild(band);
-    });
-  }
-
-  // ── SVG layer ─────────────────────────────────────────────────
-
-  function _buildSVG(w, h) {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width',  w);
-    svg.setAttribute('height', h);
-    svg.style.position = 'absolute';
-    svg.style.top      = '0';
-    svg.style.left     = '0';
-    svg.style.zIndex   = '1';
-    svg.style.pointerEvents = 'none';
-    return svg;
-  }
-
-  function _drawConnectors(svg) {
-    LOCATIONS.forEach(loc => {
-      if (!loc.requires || !loc.requires.length) return;
-      const toCenter = _nodeCenter(loc);
-
-      loc.requires.forEach(reqId => {
-        const reqLoc = LOCATIONS.find(l => l.id === reqId);
-        if (!reqLoc) return;
-        const fromCenter = _nodeCenter(reqLoc);
-
-        const isAvail = _nodeState(loc) !== 'locked';
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', fromCenter.x);
-        line.setAttribute('y1', fromCenter.y);
-        line.setAttribute('x2', toCenter.x);
-        line.setAttribute('y2', toCenter.y);
-        line.setAttribute('stroke', isAvail ? '#5a8a5a' : '#3a3a5a');
-        line.setAttribute('stroke-width', '3');
-        line.setAttribute('stroke-dasharray', isAvail ? '' : '6,4');
-        line.setAttribute('opacity', '0.7');
-        svg.appendChild(line);
-      });
-    });
-  }
-
-  // ── Nodes ─────────────────────────────────────────────────────
-
-  function _nodeCenter(loc) {
-    return {
-      x: loc.pos.col * CELL_W + CELL_W / 2,
-      y: loc.pos.row * CELL_H + CELL_H / 2,
-    };
-  }
-
-  function _nodeState(loc) {
-    const completed = GameState.isCompleted(loc.id);
-    if (completed) return 'completed';
-    const avail = _isAvailable(loc);
-    if (!avail) return 'locked';
-    return loc.isBoss ? 'boss' : 'available';
-  }
-
-  function _isAvailable(loc) {
-    if (!loc.requires || !loc.requires.length) return true;
-    if (loc.requiresAny) return loc.requires.some(r => GameState.isCompleted(r));
-    return loc.requires.every(r => GameState.isCompleted(r));
-  }
-
-  function _buildNode(loc, state) {
-    const node = document.createElement('div');
-    node.className  = `wm-node wm-state-${state}`;
-    node.dataset.id = loc.id;
-
-    const { x, y } = _nodeCenter(loc);
-    node.style.position = 'absolute';
-    node.style.left   = (x - NODE_W / 2) + 'px';
-    node.style.top    = (y - NODE_H / 2) + 'px';
-    node.style.width  = NODE_W + 'px';
-    node.style.height = NODE_H + 'px';
-    node.style.zIndex = '2';
-
-    const stars = loc.maxStars;
-    const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
-    const completedTimes = GameState.isCompleted(loc.id) ? 1 : 0;
-
-    const zoneIcon = ZONE_META[loc.zone]?.icon || '📍';
-    const bossTag  = loc.isBoss ? '<span class="wm-boss-tag">БОСС</span>' : '';
-    const lockIcon = state === 'locked' ? '<div class="wm-lock">🔒</div>' : '';
-    const checkIcon = state === 'completed' ? '<div class="wm-check">✓</div>' : '';
-
-    node.innerHTML = `
-      ${lockIcon}${checkIcon}${bossTag}
-      <div class="wm-node-icon">${loc.isBoss ? '👑' : zoneIcon}</div>
-      <div class="wm-node-name">${loc.name}</div>
-      <div class="wm-node-stars">${starStr}</div>
-    `;
-
-    if (state !== 'locked') {
-      node.addEventListener('click', () => _selectLoc(loc, state));
-    }
-    if (state === 'selected' || (selectedLoc && selectedLoc.id === loc.id)) {
-      node.classList.add('wm-selected');
-    }
-    return node;
-  }
-
-  // ── Side panel ────────────────────────────────────────────────
-
-  function _selectLoc(loc, state) {
-    selectedLoc = loc;
-    // Refresh highlights
-    document.querySelectorAll('.wm-node').forEach(n => {
-      n.classList.toggle('wm-selected', n.dataset.id === loc.id);
-    });
-    _renderPanel(loc, state || _nodeState(loc));
-  }
-
-  function _renderPanel(loc, state) {
-    const panel = document.getElementById('wm-detail-panel');
-    if (!panel) return;
-
-    if (!loc) {
-      panel.innerHTML = `
-        <div class="wm-panel-empty">
-          <div class="wm-pe-icon">🗺️</div>
-          <div class="wm-pe-text">Выберите локацию на карте</div>
-        </div>`;
+    const cur = bg.getAttribute('src') || '';
+    const same = cur === nextSrc || cur.endsWith(nextSrc);
+    if (same) {
+      bg.style.opacity = '1';
       return;
     }
 
-    const nodeState = state || _nodeState(loc);
-    const isCompleted = nodeState === 'completed';
-    const isAvail     = nodeState !== 'locked';
+    const fallback = this.BG_FALLBACK;
+    bg.style.opacity = '0';
 
-    const zoneMeta = ZONE_META[loc.zone] || {};
-    const rewards  = loc.rewards || {};
-    const stars    = '★'.repeat(loc.maxStars) + '☆'.repeat(5 - loc.maxStars);
+    const onDone = () => {
+      bg.style.transition = 'opacity 0.4s ease';
+      bg.style.opacity = '1';
+      bg.onload = null;
+      bg.onerror = null;
+    };
 
-    const enemyList = (loc.enemies || []).map(eId => {
-      const t = ENEMY_TEMPLATES[eId];
-      return t ? `<span class="wm-enemy-tag">${t.icon} ${t.name}</span>` : '';
-    }).join('');
+    const load = (src, isFallback) => {
+      bg.onload = onDone;
+      bg.onerror = () => {
+        bg.onload = null;
+        bg.onerror = null;
+        if (!isFallback && src !== fallback) {
+          load(fallback, true);
+        } else {
+          onDone();
+        }
+      };
+      bg.src = src;
+    };
 
-    const rewardHtml = `
-      <div class="wm-reward-row">💰 ${rewards.coins[0]}–${rewards.coins[1]} монет</div>
-      ${rewards.weaponChance > 0 ? `<div class="wm-reward-row">🗡️ Оружие: ${Math.round(rewards.weaponChance * 100)}%</div>` : ''}
-      ${rewards.scrollChance > 0 ? `<div class="wm-reward-row">📜 Свиток (${rewards.scrollType}): ${Math.round(rewards.scrollChance * 100)}%</div>` : ''}
-      ${rewards.artifact     ? `<div class="wm-reward-row artifact-reward">🏅 Артефакт!</div>` : ''}
-    `;
+    load(nextSrc, false);
+  },
 
-    const btnHtml = isAvail
-      ? `<button class="wm-fight-btn ${isCompleted ? 'secondary' : 'primary'}"
-           onclick="WorldMap.openSquadSelect('${loc.id}')">
-           ${isCompleted ? '🔄 Повторить' : '⚔️ В бой!'}
-         </button>`
-      : `<button class="wm-fight-btn locked-btn" disabled>🔒 Заблокировано</button>`;
+  // Called by App.showScreen('worldmap')
+  show() {
+    this.renderZone(this.currentZone);
+  },
 
-    panel.innerHTML = `
-      <div class="wm-panel-zone" style="color:${zoneMeta.borderColor || '#888'}">${zoneMeta.icon || ''} ${loc.zoneLabel || ''}</div>
-      <div class="wm-panel-name">${loc.isBoss ? '👑 ' : ''}${loc.name}</div>
-      <div class="wm-panel-stars">${stars}</div>
-      <div class="wm-panel-desc">${loc.desc || ''}</div>
-      <div class="wm-panel-section">
-        <div class="wm-section-title">⚔️ Ограничения отряда</div>
-        <div class="wm-constraint">Макс. звёздность: <strong>${'★'.repeat(loc.maxStars)}</strong></div>
-        <div class="wm-constraint">Макс. единиц: <strong>${loc.maxUnits}</strong></div>
-        <div class="wm-constraint">Врагов: <strong>${loc.enemyCount[0]}–${loc.enemyCount[1]}</strong></div>
-      </div>
-      <div class="wm-panel-section">
-        <div class="wm-section-title">👹 Противники</div>
-        <div class="wm-enemy-list">${enemyList}</div>
-      </div>
-      <div class="wm-panel-section">
-        <div class="wm-section-title">🎁 Награды</div>
-        ${rewardHtml}
-      </div>
-      ${isCompleted ? '<div class="wm-completed-badge">✓ Пройдено</div>' : ''}
-      <div class="wm-panel-btn-wrap">${btnHtml}</div>
-    `;
-  }
+  // Alias for backward compatibility with App.showScreen flow
+  render() {
+    this.show();
+  },
 
-  // ── Public: open squad select for location ────────────────────
+  renderZone(zoneNum) {
+    this.currentZone = zoneNum;
+    const meta = this.ZONE_META[zoneNum];
 
-  function openSquadSelect(locId) {
+    // Фон зоны — плавная смена при переключении ‹ ›
+    this._applyZoneBackground(meta.bg);
+
+    // Zone title
+    const labelEl = document.getElementById('zone-label');
+    const nameEl  = document.getElementById('zone-name');
+    if (labelEl) labelEl.textContent = meta.label;
+    if (nameEl)  nameEl.textContent  = meta.name;
+
+    // Nav buttons
+    const prevBtn = document.getElementById('zone-prev');
+    const nextBtn = document.getElementById('zone-next');
+    if (prevBtn) prevBtn.disabled = zoneNum <= 1;
+    if (nextBtn) nextBtn.disabled = zoneNum >= this.totalZones;
+
+    // Sort locations in current zone by orderX
+    const locations = LOCATIONS
+      .filter(l => l.zone === zoneNum)
+      .sort((a, b) => (a.orderX || 0) - (b.orderX || 0));
+
+    const container = document.getElementById('zone-nodes');
+    if (!container) return;
+    container.innerHTML = '';
+
+    locations.forEach(loc => {
+      const isCompleted = this._isCompleted(loc.id);
+      const isLocked    = !this._isUnlocked(loc);
+      const isBoss      = !!loc.isBoss;
+      const starsMax    = loc.maxStars || 1;
+      const starsStr    = '★'.repeat(starsMax) + '☆'.repeat(5 - starsMax);
+
+      const classes = [
+        'loc-node',
+        isCompleted ? 'completed' : '',
+        isLocked    ? 'locked'    : '',
+        isBoss      ? 'boss'      : '',
+      ].filter(Boolean).join(' ');
+
+      const node = document.createElement('div');
+      node.className      = classes;
+      node.dataset.locId  = loc.id;
+      node.innerHTML = `
+        <div class="loc-icon-wrap">${loc.icon || '🗺️'}</div>
+        <div class="loc-name">${loc.name}</div>
+        <div class="loc-stars">${starsStr}</div>`;
+
+      if (!isLocked) {
+        node.addEventListener('click', () => this.selectLocation(loc.id));
+      }
+      container.appendChild(node);
+    });
+
+    // Close location panel when switching zones
+    const panel = document.getElementById('location-panel');
+    if (panel) panel.classList.remove('visible');
+    const screen = document.getElementById('screen-worldmap');
+    if (screen) screen.classList.remove('location-panel-open');
+  },
+
+  selectLocation(locId) {
     const loc = LOCATIONS.find(l => l.id === locId);
     if (!loc) return;
-    SquadSelect.open(loc);
-  }
 
-  return { init, render, openSquadSelect };
-})();
+    // Highlight active node
+    document.querySelectorAll('.loc-node').forEach(n => n.classList.remove('active'));
+    const activeNode = document.querySelector(`.loc-node[data-loc-id="${locId}"]`);
+    if (activeNode) activeNode.classList.add('active');
+
+    const isCompleted = this._isCompleted(locId);
+    const panel = document.getElementById('location-panel');
+    if (!panel) return;
+
+    const starsMax = loc.maxStars || 1;
+    const starsStr = '★'.repeat(starsMax) + '☆'.repeat(5 - starsMax);
+
+    const rewards  = loc.rewards || {};
+    const coinsMin = Array.isArray(rewards.coins) ? rewards.coins[0] : (rewards.coins || '?');
+    const coinsMax = Array.isArray(rewards.coins) ? rewards.coins[1] : '';
+    const coinsStr = coinsMax ? `${coinsMin}–${coinsMax}` : coinsMin;
+
+    const enemyCountStr = Array.isArray(loc.enemyCount)
+      ? `${loc.enemyCount[0]}–${loc.enemyCount[1]}`
+      : (loc.enemyCount || '?');
+
+    const enemyChipsHtml = (loc.enemies || []).map(eId => {
+      const t = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[eId] : null;
+      const label = t ? `${t.icon || ''} ${t.name}` : eId;
+      return `<span class="lp-enemy-chip">${label}</span>`;
+    }).join('');
+
+    const weaponHtml = rewards.weaponChance > 0
+      ? `<div class="lp-reward">⚔️ Оружие: ${Math.round(rewards.weaponChance * 100)}%</div>`
+      : '';
+    const scrollHtml = rewards.scrollChance > 0
+      ? `<div class="lp-reward">📜 Свиток (${rewards.scrollType || ''}): ${Math.round(rewards.scrollChance * 100)}%</div>`
+      : '';
+    const artifactHtml = (loc.isBoss && rewards.artifact)
+      ? `<div class="lp-reward" style="color:#D4AF37">👑 Артефакт: гарантировано</div>`
+      : '';
+
+    const rawDesc = loc.desc || loc.description || '';
+    const descText = rawDesc
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    panel.innerHTML = `
+      <div class="lp-shell">
+        <header class="lp-header">
+          <h2 class="lp-name">${loc.isBoss ? '👑 ' : ''}${loc.name}</h2>
+          <div class="lp-stars" aria-label="звёздность локации">${starsStr}</div>
+        </header>
+
+        <div class="lp-blocks">
+          <section class="lp-block lp-block--desc">
+            <h3 class="lp-block-title">Описание</h3>
+            <p class="lp-desc">${descText}</p>
+          </section>
+          <section class="lp-block lp-block--limits">
+            <h3 class="lp-block-title">Ограничения отряда</h3>
+            <ul class="lp-limits">
+              <li class="lp-limit"><span>Звёзды</span> ${'★'.repeat(starsMax)}</li>
+              <li class="lp-limit"><span>Макс. единиц</span> ${loc.maxUnits ?? '?'}</li>
+              <li class="lp-limit"><span>Врагов</span> ${enemyCountStr}</li>
+            </ul>
+          </section>
+          <section class="lp-block lp-block--enemies">
+            <h3 class="lp-block-title">Противники</h3>
+            <div class="lp-enemies">${enemyChipsHtml || '<span class="lp-empty">—</span>'}</div>
+          </section>
+          <section class="lp-block lp-block--rewards">
+            <h3 class="lp-block-title">Награды</h3>
+            <div class="lp-rewards">
+              <div class="lp-reward">💰 ${coinsStr} монет</div>
+              ${weaponHtml}
+              ${scrollHtml}
+              ${artifactHtml}
+            </div>
+          </section>
+        </div>
+
+        <button type="button" class="lp-fight-btn"
+                onclick="WorldMap.startBattle('${locId}')">
+          ${isCompleted ? '🔄 Повторить бой' : '⚔️ В бой!'}
+        </button>
+      </div>`;
+
+    panel.classList.add('visible');
+    const screen = document.getElementById('screen-worldmap');
+    if (screen) screen.classList.add('location-panel-open');
+  },
+
+  prevZone() {
+    if (this.currentZone > 1) this.renderZone(this.currentZone - 1);
+  },
+
+  nextZone() {
+    if (this.currentZone < this.totalZones) this.renderZone(this.currentZone + 1);
+  },
+
+  startBattle(locId) {
+    const loc = LOCATIONS.find(l => l.id === locId);
+    if (!loc) return;
+    if (typeof SquadSelect !== 'undefined') {
+      SquadSelect.open(loc);
+    } else {
+      GameState.currentLocation = locId;
+      App.showScreen('squad_select');
+    }
+  },
+
+  // Backward compat (used in old detail panel html)
+  openSquadSelect(locId) {
+    this.startBattle(locId);
+  },
+
+  _isCompleted(locId) {
+    if (typeof GameState === 'undefined') return false;
+    if (typeof GameState.isCompleted === 'function') return GameState.isCompleted(locId);
+    return (GameState.completedLocations || []).includes(locId);
+  },
+
+  _isUnlocked(loc) {
+    if (!loc.requires || !loc.requires.length) return true;
+    if (loc.requiresAny) return loc.requires.some(id => this._isCompleted(id));
+    return loc.requires.every(id => this._isCompleted(id));
+  },
+};

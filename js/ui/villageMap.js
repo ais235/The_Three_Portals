@@ -82,7 +82,7 @@ const VillageMapUI = (() => {
       pos:      { left:'13%', top:'58%', width:'17%', height:'23%' },
       tipDir:   'above',
       tipAlign: 'start',
-      onClick:  () => App.showScreen('inventory'),
+      onClick:  () => App.showScreen('arsenal'),
     },
     {
       id:       'gate',

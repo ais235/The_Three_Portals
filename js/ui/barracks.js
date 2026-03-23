@@ -116,8 +116,9 @@ const BarracksUI = (() => {
     const lvl        = GameState.getCardLevel(ally.id);
     const stars      = lvl ? lvl.stars : ally.starRange[0];
     const powerLevel = lvl ? lvl.powerLevel : 1;
-    const equippedId = GameState.getEquipped(ally.id);
-    const weapon     = equippedId ? WEAPONS.find(w => w.id === equippedId) : null;
+    const equippedSlots = GameState.getEquippedSlots ? GameState.getEquippedSlots(ally.id) : { weapon: GameState.getEquipped(ally.id), accessory: null };
+    const weapon     = equippedSlots.weapon    ? WEAPONS.find(w => w.id === equippedSlots.weapon)    : null;
+    const accessory  = equippedSlots.accessory ? WEAPONS.find(w => w.id === equippedSlots.accessory) : null;
     const dust       = GameState.getDust();
     const dustAvail  = dust[stars] || 0;
     const maxPower   = stars * 10;
@@ -182,16 +183,25 @@ const BarracksUI = (() => {
       </div>
     `;
 
-    const weaponSection = weapon ? `
+    const weaponSection = (weapon || accessory) ? `
       <div class="modal-section">
         <div class="modal-section-title">Экипировано</div>
+        ${weapon ? `
         <div class="modal-equipped-weapon">
           <div class="mew-icon">${weapon.icon}</div>
           <div class="mew-info">
-            <div class="mew-name">${weapon.name}</div>
+            <div class="mew-name">${weapon.name} <span style="font-size:9px;opacity:.5">⚔️ Оружие</span></div>
             <div class="mew-bonuses">${formatBonuses(weapon.bonuses)}</div>
           </div>
-        </div>
+        </div>` : ''}
+        ${accessory ? `
+        <div class="modal-equipped-weapon" style="margin-top:6px">
+          <div class="mew-icon">${accessory.icon}</div>
+          <div class="mew-info">
+            <div class="mew-name">${accessory.name} <span style="font-size:9px;opacity:.5">🛡 Аксессуар</span></div>
+            <div class="mew-bonuses">${formatBonuses(accessory.bonuses)}</div>
+          </div>
+        </div>` : ''}
       </div>
     ` : '';
 

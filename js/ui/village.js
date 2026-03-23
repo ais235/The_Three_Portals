@@ -638,7 +638,7 @@ const VillageUI = (() => {
       }
       _showTab('shop');
       if (BarracksUI) BarracksUI.render();
-      if (InventoryUI)  InventoryUI.render();
+      if (typeof ArsenalUI !== 'undefined') ArsenalUI.show();
     } else {
       showToast(result.reason, 'error');
       if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('shop', 'not_enough_coins');

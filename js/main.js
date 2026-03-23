@@ -116,7 +116,7 @@ const GameState = (() => {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
-        return {
+        const d = {
           ...DEFAULT_SAVE,
           ...saved,
           dust:      { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
@@ -125,6 +125,13 @@ const GameState = (() => {
           shopItems: saved.shopItems    || [],
           activeQuests: saved.activeQuests || [],
         };
+        // Migrate old equipped format
+        for (const [uid, val] of Object.entries(d.equipped || {})) {
+          if (typeof val === 'string') {
+            d.equipped[uid] = { weapon: val, accessory: null };
+          }
+        }
+        return d;
       }
     } catch(e) {}
     return JSON.parse(JSON.stringify(DEFAULT_SAVE));
@@ -211,21 +218,91 @@ const GameState = (() => {
     return { ok: true };
   }
 
-  // ── Equipment ──────────────────────────────────────────────────
-  function equipWeapon(cardId, weaponId) {
-    // unequip from others
-    for (const [k, v] of Object.entries(data.equipped)) {
-      if (v === weaponId) delete data.equipped[k];
+  // ── Equipment (2-slot: weapon + accessory per unit) ───────────
+  function _migrateEquipped() {
+    // Convert old format { unitId: 'weaponId' } → { unitId: { weapon: id, accessory: null } }
+    for (const [unitId, val] of Object.entries(data.equipped)) {
+      if (typeof val === 'string') {
+        data.equipped[unitId] = { weapon: val, accessory: null };
+      }
     }
-    data.equipped[cardId] = weaponId;
+  }
+
+  function _getSlots(unitId) {
+    if (!data.equipped[unitId] || typeof data.equipped[unitId] === 'string') {
+      data.equipped[unitId] = { weapon: null, accessory: null };
+    }
+    return data.equipped[unitId];
+  }
+
+  function equipWeapon(unitId, weaponId) {
+    const weapon = (typeof WEAPONS !== 'undefined' ? WEAPONS : []).find(w => w.id === weaponId);
+    const slotType = weapon?.slot || 'weapon';
+
+    // Remove this weapon from any other unit's slots first
+    for (const [uid, slots] of Object.entries(data.equipped)) {
+      if (typeof slots === 'object' && slots !== null) {
+        if (slots.weapon    === weaponId) slots.weapon    = null;
+        if (slots.accessory === weaponId) slots.accessory = null;
+      } else if (slots === weaponId) {
+        data.equipped[uid] = { weapon: null, accessory: null };
+      }
+    }
+
+    const slots = _getSlots(unitId);
+    slots[slotType] = weaponId;
     save();
   }
-  function unequipWeapon(cardId) {
-    delete data.equipped[cardId];
+
+  function unequipWeapon(unitId, slotType) {
+    if (!data.equipped[unitId]) return;
+    const slots = _getSlots(unitId);
+    if (slotType) {
+      slots[slotType] = null;
+    } else {
+      // Legacy: unequip weapon slot
+      slots.weapon = null;
+    }
     save();
   }
-  function getEquipped(cardId) { return data.equipped[cardId] || null; }
-  function getAllEquipped() { return { ...data.equipped }; }
+
+  function getEquipped(unitId) {
+    // Backward compat: return weapon slot id (used by barracks modal)
+    const slots = data.equipped[unitId];
+    if (!slots) return null;
+    if (typeof slots === 'string') return slots;
+    return slots.weapon || null;
+  }
+
+  function getEquippedSlots(unitId) {
+    const slots = data.equipped[unitId];
+    if (!slots) return { weapon: null, accessory: null };
+    if (typeof slots === 'string') return { weapon: slots, accessory: null };
+    return { weapon: slots.weapon || null, accessory: slots.accessory || null };
+  }
+
+  function getAllEquipped() {
+    const result = {};
+    for (const [uid, slots] of Object.entries(data.equipped)) {
+      if (typeof slots === 'string') {
+        result[uid] = { weapon: slots, accessory: null };
+      } else {
+        result[uid] = { weapon: slots?.weapon || null, accessory: slots?.accessory || null };
+      }
+    }
+    return result;
+  }
+
+  function getWeaponOwner(weaponId) {
+    for (const [unitId, slots] of Object.entries(data.equipped)) {
+      if (typeof slots === 'string') {
+        if (slots === weaponId) return unitId;
+      } else if (slots && (slots.weapon === weaponId || slots.accessory === weaponId)) {
+        return unitId;
+      }
+    }
+    return null;
+  }
 
   // ── Weapons ────────────────────────────────────────────────────
   function addWeapon(id) {
@@ -375,7 +452,7 @@ const GameState = (() => {
     save, spendCoins, addCoins, getCoins,
     addDust, spendDust, getDust,
     isUnlocked, getUnlocked, unlockCard, getCardLevel, upgradeCard,
-    equipWeapon, unequipWeapon, getEquipped, getAllEquipped,
+    equipWeapon, unequipWeapon, getEquipped, getEquippedSlots, getAllEquipped, getWeaponOwner,
     addWeapon, hasWeapon, getOwnedWeapons,
     recycleCard,
     completeLocation, isCompleted,
@@ -397,7 +474,7 @@ const App = {
   init() {
     GameState.load();
     BarracksUI.init();
-    InventoryUI.init();
+    if (typeof ArsenalUI !== 'undefined') ArsenalUI.init();
     VillageUI.init();
     VillageMapUI.init();
     WorldMap.init();
@@ -506,8 +583,8 @@ const App = {
         BarracksUI.render();
         if (typeof NPCSystem !== 'undefined') NPCSystem.init('barracks');
         break;
-      case 'inventory':
-        InventoryUI.render();
+      case 'arsenal':
+        ArsenalUI.show();
         if (typeof NPCSystem !== 'undefined') NPCSystem.init('arsenal');
         break;
       case 'villagemap':   VillageMapUI.render();     break;
