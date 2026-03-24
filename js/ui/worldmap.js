@@ -241,7 +241,12 @@ const WorldMap = {
     const enemyChipsHtml = (loc.enemies || []).map(eId => {
       const t = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[eId] : null;
       const label = t ? `${t.icon || ''} ${t.name}` : eId;
-      return `<span class="lp-enemy-chip">${label}</span>`;
+      const safeId = String(eId).replace(/"/g, '');
+      if (t) {
+        return `<button type="button" class="lp-enemy-chip" data-enemy-id="${safeId}"
+          title="Подробная карточка">${label}</button>`;
+      }
+      return `<span class="lp-enemy-chip lp-enemy-chip--static">${label}</span>`;
     }).join('');
 
     const weaponHtml = rewards.weaponChance > 0
@@ -287,9 +292,18 @@ const WorldMap = {
           <section class="lp-block lp-block--limits">
             <h3 class="lp-block-title">Ограничения отряда</h3>
             <ul class="lp-limits">
-              <li class="lp-limit"><span>Звёзды</span> ${'★'.repeat(starsMax)}</li>
-              <li class="lp-limit"><span>Макс. единиц</span> ${loc.maxUnits ?? '?'}</li>
-              <li class="lp-limit"><span>Врагов</span> ${enemyCountStr}</li>
+              <li class="lp-limit">
+                <span class="lp-limit-label">Звёзды</span>
+                <span class="lp-limit-value">${'★'.repeat(starsMax)}</span>
+              </li>
+              <li class="lp-limit">
+                <span class="lp-limit-label">Макс. единиц</span>
+                <span class="lp-limit-value">${loc.maxUnits ?? '?'}</span>
+              </li>
+              <li class="lp-limit">
+                <span class="lp-limit-label">Врагов</span>
+                <span class="lp-limit-value">${enemyCountStr}</span>
+              </li>
             </ul>
           </section>
           <section class="lp-block lp-block--enemies">
@@ -309,6 +323,16 @@ const WorldMap = {
 
         ${fightBtnHtml}
       </div>`;
+
+    panel.querySelectorAll('.lp-enemy-chip[data-enemy-id]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-enemy-id');
+        if (!id || typeof LibraryUI === 'undefined' || typeof LibraryUI.showEnemyDetail !== 'function') return;
+        LibraryUI.showEnemyDetail(id);
+      });
+    });
 
     panel.classList.add('visible');
   },

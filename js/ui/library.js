@@ -218,6 +218,6 @@ const LibraryUI = (() => {
     _renderGrid();
   }
 
-  return { render, switchTab, filter };
+  return { render, switchTab, filter, showEnemyDetail };
 
 })();
