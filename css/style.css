@@ -254,6 +254,17 @@ select { font-family: inherit; }
 .lib-locs { font-size: 0.7rem; color: rgba(255,255,255,.4); margin-top: 4px; }
 
 /* ── NPC SYSTEM ────────────────────────────────────────────── */
+/* Эталон — Храм / вкладки деревни: одинаковый пузырь и рост фигуры везде */
+:root {
+  --npc-bubble-max-width: 380px;
+  --npc-bubble-min-width: 240px;
+  --npc-bubble-padding: 18px 28px;
+  --npc-bubble-font-size: 22px;
+  --npc-bubble-line-height: 1.5;
+  --npc-img-height: 600px; /* эталон 400px × 1.5 */
+  --npc-bubble-bg: rgba(0,0,0,.82);
+}
+
 .npc-wrap {
   position: absolute; bottom: 40px; z-index: 10;
   display: flex;
@@ -274,24 +285,28 @@ select { font-family: inherit; }
 }
 
 .npc-bubble {
-  background: rgba(0,0,0,.82);
+  background: var(--npc-bubble-bg, rgba(0,0,0,.82));
   border: 1.5px solid rgba(255,255,255,.22);
   border-radius: 14px 14px 14px 4px;
-  padding: 18px 28px;
-  max-width: 380px; min-width: 240px;
-  font-size: 22px; color: rgba(255,255,255,.9);
-  font-style: italic; line-height: 1.5;
+  padding: var(--npc-bubble-padding);
+  max-width: var(--npc-bubble-max-width);
+  min-width: var(--npc-bubble-min-width);
+  font-size: var(--npc-bubble-font-size);
+  color: rgba(255,255,255,.9);
+  font-style: italic;
+  line-height: var(--npc-bubble-line-height);
   text-align: center;
   transition: opacity .25s ease;
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   position: relative;
+  box-sizing: border-box;
 }
 .npc-bubble::after {
   content: '';
   position: absolute;
   bottom: -16px; left: 50%; transform: translateX(-50%);
   border: 16px solid transparent;
-  border-top-color: rgba(0,0,0,.82);
+  border-top-color: var(--npc-bubble-bg, rgba(0,0,0,.82));
   border-bottom: none;
 }
 .npc-wrap.npc-right .npc-bubble {
@@ -299,10 +314,24 @@ select { font-family: inherit; }
 }
 
 .npc-img {
-  height: 400px; object-fit: contain;
+  height: var(--npc-img-height);
+  width: auto;
+  max-width: none;
+  object-fit: contain;
   filter: drop-shadow(0 4px 16px rgba(0,0,0,.7));
   flex-shrink: 0;
   display: block;
+}
+
+/* Узкая колонка слева (лавка, библиотека): пузырь и спрайт не шире колонки */
+.npc-fixed-left .npc-bubble {
+  max-width: min(var(--npc-bubble-max-width), 100%);
+  min-width: 0;
+}
+.npc-fixed-left .npc-img {
+  max-width: 100%;
+  height: auto;
+  max-height: var(--npc-img-height);
 }
 
 /* ── NAVIGATION BUTTONS ────────────────────────────────────── */
@@ -2140,7 +2169,8 @@ select { font-family: inherit; }
   padding-top: 50px;    /* очищает зону HUD (fixed top:12px) */
   padding-right: 14px;
   padding-bottom: 12px;
-  padding-left: 460px !important; /* NPC + широкий пузырь (~440px) */
+  /* На широком экране — запас под крупного NPC; на узком — меньше пустоты, карточки не уезжают */
+  padding-left: calc(env(safe-area-inset-left, 0px) + clamp(140px, 32vw + 40px, 690px)) !important;
   overflow: hidden;
   gap: 8px;
   z-index: 1;
@@ -3753,7 +3783,7 @@ select { font-family: inherit; }
   background: rgba(0, 0, 0, 0.55);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  padding: 64px 32px 14px 360px; /* Увеличили отступы для NPC и логотипа */
+  padding: 64px 32px 14px 630px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -3775,31 +3805,27 @@ select { font-family: inherit; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
-  padding: 24px 32px 60px 360px;
+  padding: 24px 32px 60px 630px;
   align-content: flex-start;
   scrollbar-width: thin;
   scrollbar-color: rgba(212,175,55,.3) transparent;
 }
 
-/* NPC в казарме — специальное позиционирование, чтобы не перекрывать карты */
+/* Казарма: зона NPC под эталонный пузырь; контент сдвинут, чтобы не пересекаться */
 #npc-container-barracks {
-  position: absolute; bottom: 0; left: 0;
-  width: 360px; z-index: 10; pointer-events: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 630px;
+  z-index: 10;
+  pointer-events: none;
 }
 #npc-container-barracks .npc-wrap {
-  bottom: 0; left: 24px;
-}
-#npc-container-barracks .npc-img {
-  height: 420px; /* Рост Сержанта */
+  bottom: 0;
+  left: 24px;
 }
 #npc-container-barracks .npc-bubble {
-  max-width: 260px; /* Еще уже, чтобы не лез в грид */
-  min-width: 180px;
-  font-size: 16px;
-  padding: 12px 20px;
-  border-radius: 14px 14px 14px 4px;
-  margin-bottom: -15px;
-  line-height: 1.4;
+  margin-bottom: -12px;
 }
 
 /* ── CARD DETAIL OVERLAY ──────────────────────────────────────── */
@@ -4795,11 +4821,20 @@ select { font-family: inherit; }
    ARSENAL SCREEN
    ================================================================ */
 
-/* NPC right-side container */
+/* NPC справа: ширина под увеличенную фигуру и пузырь */
 .npc-fixed-right {
   position: absolute; bottom: 0; right: 0;
-  width: 190px; z-index: 20; pointer-events: none;
-  display: flex; flex-direction: column; align-items: center;
+  width: 600px;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.npc-fixed-right .npc-img {
+  max-width: 100%;
+  height: auto;
+  max-height: var(--npc-img-height);
 }
 #npc-container-arsenal .npc-bubble {
   border-radius: 14px 14px 4px 14px;
@@ -4814,7 +4849,7 @@ select { font-family: inherit; }
   top: max(92px, calc(env(safe-area-inset-top, 0px) + 80px));
   bottom: 0;
   left: 0;
-  right: 190px;
+  right: 600px;
   display: flex;
   flex-direction: column;
   padding: 10px 14px 12px min(248px, max(116px, 34vw));
