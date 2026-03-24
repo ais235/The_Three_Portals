@@ -4278,13 +4278,15 @@ select { font-family: inherit; }
   text-shadow: 0 2px 10px rgba(0,0,0,.9);
 }
 .council-timer {
-  font-size: 13px;
-  color: rgba(255,255,255,.45);
+  font-size: 18px;
+  line-height: 1.3;
+  color: rgba(255,255,255,.55);
   text-shadow: 0 1px 6px rgba(0,0,0,.8);
 }
 #council-timer-val {
   color: #FAC775;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.05em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4461,16 +4463,17 @@ select { font-family: inherit; }
   margin-bottom: 8px;
 }
 .ex-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255,255,255,.65);
+  font-size: 20px;
+  font-weight: 700;
+  color: #FAC775;
+  text-shadow: 0 1px 8px rgba(0,0,0,.75);
   flex-shrink: 0;
 }
-.ex-filters { display: flex; gap: 5px; flex-wrap: wrap; }
+.ex-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .ef {
-  padding: 3px 10px;
-  border-radius: 10px;
-  font-size: 10px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 14px;
   cursor: pointer;
   background: rgba(0,0,0,.4);
   border: 1px solid rgba(255,255,255,.12);
@@ -4509,6 +4512,11 @@ select { font-family: inherit; }
   width: 175px;
   min-height: 268px;
   cursor: pointer;
+}
+/* Без translateY при hover — иначе верхний ряд обрезается overflow контейнера */
+.exchange-cards-row .fc:hover {
+  transform: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 /* Selected state — red border + checkmark badge */
 .exchange-cards-row .fc.selected-for-exchange {
