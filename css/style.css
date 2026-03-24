@@ -3807,6 +3807,10 @@ select { font-family: inherit; }
   width: 240px;
   cursor: default;
 }
+.dm-left .fc:hover {
+  transform: none;
+  box-shadow: none;
+}
 .dm-left .fc-art  { height: 200px; }
 .dm-left .fc-med  { width: 160px; height: 160px; font-size: 74px; }
 .dm-left .fc-hd   { font-size: 12px; padding: 7px 12px; }
