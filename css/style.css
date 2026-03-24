@@ -193,11 +193,8 @@ select { font-family: inherit; }
   background: transparent;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.library-title {
-  font-size: 18px; font-weight: 500;
-  color: #FAC775;
-  text-shadow: 0 2px 8px rgba(0,0,0,.8);
-  flex-shrink: 0; margin: 0;
+.library-header .building-title {
+  flex-shrink: 0;
 }
 .library-tabs {
   display: flex; gap: 6px;
@@ -1500,9 +1497,7 @@ select { font-family: inherit; }
   box-shadow: 0 0 80px rgba(100,100,220,0.3);
 }
 .portal-modal-title {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-accent);
+  margin: 0 0 6px;
 }
 .portal-modal-close {
   position: absolute;
@@ -1742,6 +1737,9 @@ select { font-family: inherit; }
 }
 
 /* Shared section elements */
+.v-building-heading {
+  margin-bottom: 8px;
+}
 .v-section-title {
   font-size: 1.05rem;
   font-weight: 800;
@@ -1785,6 +1783,17 @@ select { font-family: inherit; }
   height: 100%;
   overflow: hidden;
   background: #060210; /* тёмный фон для letterbox-полей */
+}
+.temple-building-title {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  text-align: center;
+  width: calc(100% - 24px);
+  max-width: 480px;
 }
 
 /* Фоновое изображение — object-fit:contain, весь храм виден */
@@ -1932,6 +1941,17 @@ select { font-family: inherit; }
   overflow: hidden;
   background: #060210;
 }
+.portal-building-title {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  text-align: center;
+  width: calc(100% - 24px);
+  max-width: 480px;
+}
 
 /* Фон — весь виден целиком (object-fit: contain) */
 .portal-bg {
@@ -1983,38 +2003,43 @@ select { font-family: inherit; }
   margin-top: 5px;
 }
 
-/* Тултип со шансами выпадения (появляется при наведении) */
+/* Тултип со шансами — те же кегль/бокс, что .tooltip у артефактов в храме */
 .scroll-tooltip {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%; transform: translateX(-50%) translateY(6px);
-  background: rgba(6, 2, 18, 0.95);
-  border: 1px solid rgba(212,175,55,.4);
-  border-radius: 8px;
-  padding: 8px 14px;
-  min-width: 120px;
-  text-align: left;
+  background: rgba(6, 2, 16, 0.94);
+  border: 1px solid rgba(212,175,55,.45);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 156px;
+  max-width: 260px;
+  text-align: center;
   pointer-events: none;
   opacity: 0;
   transition: opacity .2s, transform .2s;
   z-index: 30;
-  white-space: nowrap;
+  white-space: normal;
 }
 .scroll-pedestal:hover .scroll-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 .st-name {
-  font-size: 11px; font-weight: 700;
-  color: #D4AF37; margin-bottom: 6px;
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #D4AF37;
+  margin-bottom: 6px;
+  line-height: 1.25;
   text-align: center;
   border-bottom: 1px solid rgba(212,175,55,.25);
-  padding-bottom: 4px;
+  padding-bottom: 6px;
 }
 .st-odds-row {
-  font-size: 11px; color: #ccc;
-  line-height: 1.8;
-  letter-spacing: .02em;
+  font-size: 13px;
+  color: #ddd;
+  line-height: 1.5;
 }
 
 /* Debug: красные рамки тумб */
@@ -2103,6 +2128,10 @@ select { font-family: inherit; }
 }
 
 /* Весь UI поверх фона */
+.shop-building-title {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
 .shop-ui {
   position: absolute;
   inset: 0;
@@ -2118,43 +2147,63 @@ select { font-family: inherit; }
   box-sizing: border-box;
 }
 
-/* Строка заголовка героев + таймер/кнопка справа */
+/* Заголовок «Герои» + колонка таймер/обновить в правом углу (без наезда на ряд карт) */
 .shop-heroes-header {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 20px;
   margin-bottom: 0;
 }
-.shop-heroes-header .shop-section-label {
+/* Подзаголовки секций магазина: «Герои» и «Оружие и снаряжение» — один стиль */
+.shop-heroes-header .shop-section-label,
+.shop-weapons-section .shop-section-label {
   margin-bottom: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255,255,255,.88);
+  letter-spacing: 0.02em;
+}
+.shop-heroes-header .shop-section-label {
+  min-width: 0;
 }
 .shop-topbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 10px;
   flex-shrink: 0;
+  max-width: min(100%, 280px);
 }
 .shop-timer-text {
-  font-size: 13px;
-  color: rgba(255,255,255,.5);
-  white-space: nowrap;
+  font-size: 18px;
+  line-height: 1.35;
+  color: rgba(255,255,255,.55);
+  text-shadow: 0 1px 6px rgba(0,0,0,.8);
+  text-align: right;
+  white-space: normal;
 }
 .shop-timer-text b {
-  color: rgba(255,200,100,.8);
-  font-weight: 500;
+  color: #FAC775;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05em;
 }
 .shop-refresh-btn {
-  font-size: 13px;
-  padding: 6px 18px;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 10px 20px;
   border-radius: 16px;
   background: rgba(0,0,0,.55);
   border: 1px solid rgba(255,255,255,.2);
-  color: rgba(255,255,255,.75);
+  color: rgba(255,255,255,.85);
   cursor: pointer;
   font-family: inherit;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
   transition: all .15s;
 }
 .shop-refresh-btn:hover {
@@ -2252,75 +2301,68 @@ select { font-family: inherit; }
   flex-direction: column;
   gap: 6px;
 }
-.shop-weapons-section .shop-section-label {
-  margin-bottom: 0;
-}
-
-/* ── Ряд оружия ── */
+/* ── Ряд оружия — карточки как в арсенале (.wc) ── */
 .shop-weapons-row {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: nowrap;
   flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,.3) transparent;
 }
-.weapon-shop-card {
-  width: 220px;
-  border-radius: 14px;
-  background: rgba(10,8,30,.9);
-  border: 2px solid var(--wc-border, rgba(255,255,255,.2));
-  overflow: hidden;
+.shop-weapons-row .wc {
+  flex: 0 0 170px;
+  width: 170px;
+  min-width: 170px;
 }
-.wsc-top {
-  padding: 14px 14px 10px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.wc.wc-shop {
+  height: auto;
+  min-height: 210px;
+  cursor: default;
 }
-.wsc-icon { font-size: 38px; flex-shrink: 0; line-height: 1; margin-top: 2px; }
-.wsc-info { flex: 1; min-width: 0; }
-.wsc-rarity {
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 8px;
-  display: inline-block;
-  margin-bottom: 5px;
+.wc.wc-shop:hover {
+  transform: none;
 }
-.wsc-name { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
-.wsc-bonus { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5; }
-.wsc-special {
-  font-size: 10px;
-  color: rgba(212,175,55,.8);
-  font-style: italic;
-  margin-top: 4px;
-  line-height: 1.4;
-}
-.wsc-divider { height: 1px; background: rgba(255,255,255,.08); }
-.wsc-bottom {
-  padding: 8px 14px;
+.wc-shop-foot {
+  margin-top: auto;
+  flex-shrink: 0;
+  padding: 4px 10px 6px;
+  border-top: 1px solid rgba(255,255,255,.07);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
-.wsc-price { font-size: 14px; font-weight: 500; color: #FAC775; }
-.wsc-buy-btn {
-  padding: 6px 14px;
-  border-radius: 10px;
+.wc-shop-price {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FAC775;
+  white-space: nowrap;
+}
+.wc-shop-buy {
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.35);
+  border: 1px solid rgba(255,255,255,.1);
+  cursor: not-allowed;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.wc-shop-buy.can-buy {
   background: rgba(26,74,26,.9);
   color: #7af07a;
-  border: 1px solid rgba(58,160,58,.4);
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
+  border-color: rgba(58,160,58,.4);
   cursor: pointer;
-  transition: background .15s;
 }
-.wsc-buy-btn:hover:not(:disabled) { background: rgba(30,100,30,.95); }
-.wsc-buy-btn:disabled {
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.3);
-  cursor: not-allowed;
-  border-color: transparent;
+.wc-shop-buy.can-buy:hover {
+  background: rgba(30,100,30,.95);
 }
 
 /* Rarity badge colors (legacy — used in inventory/barracks) */
@@ -3717,12 +3759,8 @@ select { font-family: inherit; }
   align-items: center;
   justify-content: space-between;
 }
-.barracks-header h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #FAC775;
+.barracks-header .building-title {
   white-space: nowrap;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
 .barracks-header .filters {
   margin-left: 0; /* Сбрасываем margin-left: auto для flex-раскладки */
@@ -4261,6 +4299,17 @@ select { font-family: inherit; }
   scrollbar-color: rgba(212,175,55,.35) transparent;
 }
 
+/* Заголовок здания — размер и стиль как «Совет старейшин» */
+.building-title,
+.council-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #FAC775;
+  text-shadow: 0 2px 10px rgba(0,0,0,.9);
+  margin: 0;
+  line-height: 1.25;
+}
+
 .council-header {
   display: flex;
   align-items: baseline;
@@ -4270,12 +4319,6 @@ select { font-family: inherit; }
   gap: 8px;
   width: 100%;
   max-width: 680px;
-}
-.council-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #FAC775;
-  text-shadow: 0 2px 10px rgba(0,0,0,.9);
 }
 .council-timer {
   font-size: 18px;
@@ -4462,11 +4505,7 @@ select { font-family: inherit; }
   gap: 10px;
   margin-bottom: 8px;
 }
-.ex-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #FAC775;
-  text-shadow: 0 1px 8px rgba(0,0,0,.75);
+.exchange-top-header .building-title {
   flex-shrink: 0;
 }
 .ex-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -4769,13 +4808,18 @@ select { font-family: inherit; }
   left: auto; right: 20px; transform: none;
 }
 
-/* Main content area (to the left of NPC) */
+/* Main content area (to the left of NPC) — отступы: не заезжать на HUD и кнопку «в деревню» */
 .arsenal-content {
-  position: absolute; top: 60px; bottom: 0;
-  left: 0; right: 190px;
-  display: flex; flex-direction: column;
-  padding: 12px 14px;
+  position: absolute;
+  top: max(92px, calc(env(safe-area-inset-top, 0px) + 80px));
+  bottom: 0;
+  left: 0;
+  right: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 12px min(248px, max(116px, 34vw));
   z-index: 10;
+  box-sizing: border-box;
 }
 
 /* Header row */
@@ -4787,16 +4831,22 @@ select { font-family: inherit; }
 .ar-header-top {
   display: flex; align-items: center; gap: 10px;
 }
-.ar-title {
-  font-size: 17px; font-weight: 500; color: #D4AF37;
-  letter-spacing: .03em; flex-shrink: 0;
+.ar-header-top .building-title {
+  flex-shrink: 0;
 }
-.ar-filters { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+/* Фильтры — тот же кегль/отступы, что у .ef в лавке алхимика */
+.ar-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .af {
-  padding: 4px 11px; border-radius: 12px; font-size: 11px;
-  cursor: pointer; background: rgba(0,0,0,.4);
-  border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.45);
-  transition: all .15s; white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.4);
+  transition: all .15s;
+  white-space: nowrap;
+  font-family: inherit;
 }
 .af:hover { border-color: rgba(212,175,55,.3); color: rgba(255,255,255,.7); }
 .af.active {
@@ -4805,21 +4855,21 @@ select { font-family: inherit; }
   color: #FAC775;
 }
 .ar-filter-divider {
-  width: 1px; height: 16px;
+  width: 1px; height: 20px;
+  align-self: center;
   background: rgba(255,255,255,.15);
   flex-shrink: 0;
 }
-.ar-count {
-  margin-left: auto; font-size: 11px;
-  color: rgba(255,255,255,.3); flex-shrink: 0; align-self: center;
-}
-
 /* Weapon card grid */
 .weapons-grid {
-  flex: 1; overflow-y: auto;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px; align-content: start;
+  gap: 10px;
+  align-content: start;
+  padding: 6px 4px 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(212,175,55,.3) transparent;
 }
@@ -4834,10 +4884,16 @@ select { font-family: inherit; }
   border: 2px solid var(--wc-border, #444);
   background: var(--wc-bg, #1a1010);
   display: flex; flex-direction: column;
-  cursor: pointer; transition: transform .12s, box-shadow .12s;
+  cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease;
   position: relative;
 }
-.wc:hover { transform: translateY(-3px); }
+/* Без translateY — иначе верхний ряд уезжает за край скролла */
+.wc:hover {
+  transform: none;
+  box-shadow: 0 8px 22px rgba(0,0,0,.5);
+  z-index: 2;
+}
 
 .wc-head {
   padding: 6px 10px; flex-shrink: 0;
@@ -4873,16 +4929,34 @@ select { font-family: inherit; }
 }
 
 .wc-foot {
-  margin-top: auto; flex-shrink: 0;
+  margin-top: auto;
+  flex-shrink: 0;
   padding: 4px 10px 6px;
   border-top: 1px solid rgba(255,255,255,.07);
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.wc-owner { font-size: 10px; color: rgba(255,255,255,.3); }
-.wc-owner b { color: rgba(255,200,100,.8); }
+.wc-owner {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: rgba(255,255,255,.3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-owner b { color: rgba(255,200,100,.8); font-weight: 600; }
 .wc-slot-type {
-  font-size: 10px; padding: 1px 6px; border-radius: 5px;
-  background: rgba(255,255,255,.08); color: rgba(255,255,255,.35);
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.35);
+  white-space: nowrap;
 }
 
 /* Rarity color schemes */

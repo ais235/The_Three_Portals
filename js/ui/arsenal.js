@@ -97,13 +97,10 @@ const ArsenalUI = (() => {
   // ── Render grid ────────────────────────────────────────────────
 
   function _render() {
-    const grid    = document.getElementById('weapons-grid');
-    const countEl = document.getElementById('ar-count');
+    const grid = document.getElementById('weapons-grid');
     if (!grid) return;
 
     const weapons = _filteredWeapons();
-    if (countEl) countEl.textContent = `${weapons.length} оружие`;
-
     grid.innerHTML = weapons.map(w => _buildCard(w)).join('');
   }
 
@@ -265,5 +262,66 @@ const ArsenalUI = (() => {
     return map[key] || key;
   }
 
-  return { init, show, setFilter, onWeaponClick, doEquip, closeModal };
+  /** Карточка оружия для витрины магазина — разметка как у `.wc` в арсенале */
+  function buildShopWeaponCard(weapon, ctx) {
+    const {
+      itemIdx,
+      price,
+      hasWeapon,
+      purchased,
+      canAfford,
+      btnLabel,
+    } = ctx;
+
+    const rarityClass = {
+      common: 'wc-common', rare: 'wc-rare',
+      epic: 'wc-epic', legendary: 'wc-legendary',
+    }[weapon.rarity] || 'wc-common';
+
+    const rarityLabel = {
+      common: 'Обычное', rare: 'Редкое',
+      epic: 'Эпическое', legendary: 'Легендарное',
+    }[weapon.rarity] || weapon.rarity;
+
+    const bonusText = Object.entries(weapon.bonuses || {})
+      .map(([k, v]) => `+${v} ${_bonusLabel(k)}`).join(' · ');
+
+    const slotLabel = weapon.slot === 'weapon' ? '⚔️ Оружие' : '🛡 Аксессуар';
+    const desc = (weapon.special && weapon.special.desc) || weapon.lore || '';
+
+    const done = hasWeapon || purchased;
+    const statusText = hasWeapon ? '✓ В арсенале'
+      : purchased ? '✓ Куплено'
+      : '';
+
+    const footInner = done
+      ? `<span class="wc-owner">${statusText}</span>
+         <span class="wc-slot-type">${slotLabel}</span>`
+      : `<span class="wc-shop-price">${price} 💰</span>
+         <button type="button" class="wc-shop-buy${canAfford ? ' can-buy' : ''}"
+                 ${!canAfford ? 'disabled' : ''}
+                 onclick="event.stopPropagation(); VillageUI.buyItem(${itemIdx})">${btnLabel}</button>`;
+
+    return `
+      <div class="wc ${rarityClass} wc-shop">
+        <div class="wc-head">
+          <div class="wc-head-top">
+            <span></span>
+            <span class="wc-rarity-badge">${rarityLabel}</span>
+          </div>
+          <div class="wc-name">${weapon.name}</div>
+        </div>
+        <div class="wc-art">${weapon.icon || '⚔️'}</div>
+        <div class="wc-bonus-zone">
+          <div class="wc-bonus">${bonusText || '—'}</div>
+        </div>
+        <div class="wc-desc">${desc}</div>
+        <div class="wc-shop-foot">${footInner}</div>
+      </div>`;
+  }
+
+  return {
+    init, show, setFilter, onWeaponClick, doEquip, closeModal,
+    buildShopWeaponCard,
+  };
 })();

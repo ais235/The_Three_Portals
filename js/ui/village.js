@@ -175,6 +175,7 @@ const VillageUI = (() => {
 
     return `
       <div class="portal-wrap${PORTAL_DEBUG ? ' portal-debug' : ''}">
+        <div class="building-title portal-building-title">🌀 Портальный круг</div>
         <img class="portal-bg" src="assets/portal_bg.png" alt="Портал" draggable="false">
         <div class="portal-zones" id="portal-zones">${pedestals}</div>
         <div class="portal-result-overlay" id="portal-result-overlay" style="display:none">
@@ -432,6 +433,7 @@ const VillageUI = (() => {
 
     return `
       <div class="temple-wrap">
+        <div class="building-title temple-building-title">🏛️ Храм артефактов</div>
         <img class="temple-bg" src="assets/temple_bg.png" alt="Храм" draggable="false">
         <div class="temple-ped-zones">${zones}</div>
       </div>`;
@@ -506,19 +508,6 @@ const VillageUI = (() => {
 
   // ── SHOP ─────────────────────────────────────────────────────────
 
-  const _WEAP_LABELS = {
-    meleeAtk:'Ближн.атк', meleeDef:'Ближн.защ',
-    rangeAtk:'Дальн.атк', rangeDef:'Дальн.защ',
-    magic:'Магия', magicDef:'Маг.защ', hp:'HP', mana:'Мана', initiative:'Иниц.',
-  };
-
-  const _RARITY_COLORS = {
-    common:    { bg:'#D3D1C7', fg:'#444441', border:'#B4B2A9' },
-    rare:      { bg:'#B5D4F4', fg:'#0C447C', border:'#85B7EB' },
-    epic:      { bg:'#CECBF6', fg:'#26215C', border:'#AFA9EC' },
-    legendary: { bg:'#FAC775', fg:'#412402', border:'#EF9F27' },
-  };
-
   function _buildShopHTML() {
     const items     = GameState.getShopItems();
     const cardItems = items.map((item, idx) => ({ ...item, _idx: idx })).filter(i => i.type === 'card');
@@ -551,39 +540,28 @@ const VillageUI = (() => {
     const weaponsHTML = weapItems.map(item => {
       const w = (typeof WEAPONS !== 'undefined') && WEAPONS.find(wpn => wpn.id === item.id);
       if (!w) return '';
-      const isOwned   = GameState.hasWeapon(item.id) || item.purchased;
-      const canAfford = !isOwned && GameState.coins >= item.price;
-      const rar       = _RARITY_COLORS[w.rarity] || _RARITY_COLORS.common;
-      const bonuses   = Object.entries(w.bonuses || {})
-        .map(([k, v]) => `+${v} ${_WEAP_LABELS[k] || k}`).join(' · ');
-      return `
-        <div class="weapon-shop-card" style="--wc-border:${rar.border}">
-          <div class="wsc-top">
-            <span class="wsc-icon">${w.icon || '🗡️'}</span>
-            <div class="wsc-info">
-              <span class="wsc-rarity" style="background:${rar.bg};color:${rar.fg}">
-                ${(typeof RARITIES !== 'undefined' && RARITIES[w.rarity]?.label) || w.rarity}
-              </span>
-              <div class="wsc-name">${w.name}</div>
-              <div class="wsc-bonus">${bonuses}</div>
-              ${w.special ? `<div class="wsc-special">${w.special.desc || ''}</div>` : ''}
-            </div>
-          </div>
-          <div class="wsc-divider"></div>
-          <div class="wsc-bottom">
-            <span class="wsc-price">${item.price} 💰</span>
-            <button class="wsc-buy-btn" ${!canAfford ? 'disabled' : ''}
-                    onclick="VillageUI.buyItem(${item._idx})">
-              ${isOwned ? '✓ Есть' : canAfford ? '🛒 Купить' : 'Нет монет'}
-            </button>
-          </div>
-        </div>`;
+      const hasWeapon = GameState.hasWeapon(item.id);
+      const done      = hasWeapon || item.purchased;
+      const canAfford = !done && GameState.coins >= item.price;
+      const btnText   = done
+        ? '✓ Есть'
+        : canAfford ? '🛒 Купить' : 'Нет монет';
+      if (typeof ArsenalUI === 'undefined' || !ArsenalUI.buildShopWeaponCard) return '';
+      return ArsenalUI.buildShopWeaponCard(w, {
+        itemIdx:   item._idx,
+        price:     item.price,
+        hasWeapon,
+        purchased: !!item.purchased,
+        canAfford,
+        btnLabel:  btnText,
+      });
     }).join('');
 
     return `
       <div class="shop-wrap">
         <img class="shop-bg" src="assets/shop_bg.jpg" alt="">
         <div class="shop-ui">
+          <div class="building-title shop-building-title">🛒 Магазин</div>
           <div class="shop-heroes-header">
             <div class="shop-section-label">⚔️ Герои</div>
             <div class="shop-topbar">
@@ -718,7 +696,7 @@ const VillageUI = (() => {
       <img class="building-bg" src="assets/council_bg.png" alt="">
       <div class="council-wrap">
         <div class="council-header">
-          <div class="council-title">📜 Совет старейшин</div>
+          <div class="building-title council-title">📜 Совет старейшин</div>
           <div class="council-timer">Сброс через <span id="council-timer-val">--:--:--</span></div>
         </div>
         <div class="quest-list">${questsHTML}</div>
@@ -761,7 +739,7 @@ const VillageUI = (() => {
 
   function _buildLibraryHTML() {
     return `
-      <div class="v-section-title">📖 Библиотека</div>
+      <div class="building-title v-building-heading">📖 Библиотека</div>
       <div class="lib-header">
         <div class="lib-tabs">
           <button class="lib-tab-btn ${_libTab === 'allies' ? 'active' : ''}"
