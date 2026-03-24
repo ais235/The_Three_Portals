@@ -22,12 +22,11 @@ const VillageUI = (() => {
 
   // ── Portal: позиции тумб со свитками ────────────────────────────
   // left/bottom — % от видимой области картинки (как PED_POSITIONS)
-  // Меняй эти числа чтобы двигать тумбы по фону
-  // NPC слева занимает ~20%, свитки в зоне 20-100%
+  // Равномерно вокруг центра портала: 150° / −90° / 30° (лево / низ / право)
   const SCROLL_POSITIONS = [
-    { type: 'bronze', left: '30%', bottom: '24%', delay: '0s'   },
-    { type: 'silver', left: '55%', bottom:  '4%', delay: '0.8s' },
-    { type: 'gold',   left: '80%', bottom: '24%', delay: '1.6s' },
+    { type: 'bronze', left: '36%', bottom: '38%', delay: '0s'   },
+    { type: 'silver', left: '50%', bottom: '14%', delay: '0.8s' },
+    { type: 'gold',   left: '64%', bottom: '38%', delay: '1.6s' },
   ];
 
   // ── Temple: позиции постаментов ─────────────────────────────────
