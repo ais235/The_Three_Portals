@@ -101,10 +101,11 @@ const ExchangeUI = {
   // ── Queue + dust result (bottom belt) ────────────────────────
 
   renderQueue() {
-    const list   = document.getElementById('ex-queue-list');
-    const result = document.getElementById('ex-dust-result');
-    const hint   = document.getElementById('ex-hint');
-    const btn    = document.getElementById('ex-brew-btn');
+    const list       = document.getElementById('ex-queue-list');
+    const result     = document.getElementById('ex-dust-result');
+    const hint       = document.getElementById('ex-hint');
+    const btn        = document.getElementById('ex-brew-btn');
+    const cauldronEl = document.getElementById('ex-cauldron');
     if (!list || !result) return;
 
     if (!this.selected.length) {
@@ -112,6 +113,7 @@ const ExchangeUI = {
       result.innerHTML = '<div class="ex-dr-empty">— выбери карты —</div>';
       if (hint) hint.textContent = 'Выбери карты сверху';
       if (btn)  { btn.disabled = true; btn.textContent = '🔥 Переработать'; }
+      if (cauldronEl) cauldronEl.disabled = true;
       return;
     }
 
@@ -141,11 +143,11 @@ const ExchangeUI = {
     });
     result.innerHTML = Object.entries(totals)
       .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([s, n], i, arr) => `
+      .map(([s, n]) => `
         <div class="ex-dr-row">
           <span class="ex-dr-star">Пыль ★${s}</span>
           <span class="ex-dr-val">+${n}</span>
-        </div>${i < arr.length - 1 ? '<div class="ex-dr-divider"></div>' : ''}`)
+        </div>`)
       .join('');
 
     if (hint) hint.textContent = `${this.selected.length} карт выбрано`;
@@ -153,6 +155,7 @@ const ExchangeUI = {
       btn.disabled    = false;
       btn.textContent = `🔥 Переработать (${this.selected.length})`;
     }
+    if (cauldronEl) cauldronEl.disabled = false;
   },
 
   // ── Execute exchange ──────────────────────────────────────────
@@ -165,7 +168,7 @@ const ExchangeUI = {
     if (cauldron) {
       cauldron.style.animation = 'ex-boil 0.3s ease-in-out 4';
       setTimeout(() => {
-        if (cauldron) cauldron.style.animation = 'ex-bob 3s ease-in-out infinite';
+        if (cauldron) cauldron.style.animation = '';
       }, 1300);
     }
 

@@ -50,6 +50,28 @@ function getAtkLabel(card) {
 function getMagicIcon(card)    { return card.class.includes('mage') ? '💧' : '✨'; }
 function getSpecialLabel(card) { return card.class.includes('mage') ? 'МАНА' : 'МЗ'; }
 
+/** Сокращение → полная подсказка для атрибута title (быстрый вариант) */
+const STAT_LABEL_HINTS = {
+  HP: 'Здоровье (очки жизни)',
+  DEF: 'Ближняя защита',
+  БА: 'Ближняя атака',
+  ДА: 'Дальняя атака',
+  МАГ: 'Магическая атака',
+  МАНА: 'Мана',
+  МЗ: 'Магическая защита',
+  БЗ: 'Ближняя защита',
+  ДЗ: 'Дальняя защита',
+  ИНИЦ: 'Инициатива',
+};
+
+function statTitleAttr(abbrev) {
+  const key = String(abbrev).trim();
+  const hint = STAT_LABEL_HINTS[key];
+  if (!hint) return '';
+  const esc = hint.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return ` title="${esc}"`;
+}
+
 function getAbColor(ability) {
   return ({ passive:'#888780', active:'#185FA5', on_hit:'#A32D2D',
              aura:'#3B6D11', spell:'#534AB7' })[ability.type] || '#888';
@@ -90,22 +112,22 @@ function buildMiniCard(card, options = {}) {
         <div class="fc-s fc-stl">
           <span class="si">${getAtkIcon(card)}</span>
           <span class="sv">${stats.atk}</span>
-          <span class="sl">${getAtkLabel(card)}</span>
+          <span class="sl"${statTitleAttr(getAtkLabel(card))}>${getAtkLabel(card)}</span>
         </div>
         <div class="fc-s fc-str">
           <span class="si">🛡</span>
           <span class="sv">${stats.def}</span>
-          <span class="sl">DEF</span>
+          <span class="sl"${statTitleAttr('DEF')}>DEF</span>
         </div>
         <div class="fc-s fc-sbl">
           <span class="si">❤️</span>
           <span class="sv">${stats.hp}</span>
-          <span class="sl">HP</span>
+          <span class="sl"${statTitleAttr('HP')}>HP</span>
         </div>
         <div class="fc-s fc-sbr">
           <span class="si">${getMagicIcon(card)}</span>
           <span class="sv">${stats.special}</span>
-          <span class="sl">${getSpecialLabel(card)}</span>
+          <span class="sl"${statTitleAttr(getSpecialLabel(card))}>${getSpecialLabel(card)}</span>
         </div>
         ${showLocked ? '<div class="fc-lock-overlay">🔒</div>' : ''}
       </div>
@@ -119,7 +141,7 @@ function buildMiniCard(card, options = {}) {
       ).join('')}
       </div>
       <div class="fc-ft">
-        <span>⚡ Иниц: ${calcInitiative(card.base.initiative, stars, powerLevel).toFixed(1)}</span>
+        <span${statTitleAttr('ИНИЦ')}>⚡ Иниц: ${calcInitiative(card.base.initiative, stars, powerLevel).toFixed(1)}</span>
         <span class="fc-ft-col">Кол. ${cls.column || '?'}</span>
       </div>
     </div>`;
@@ -156,7 +178,7 @@ function showCardDetail(cardId) {
         <b>ур.${powerLevel} / ${maxPower}</b>
       </div>
       <div class="dm-bar"><div class="dm-bf" style="width:${(powerLevel / maxPower * 100).toFixed(0)}%"></div></div>
-      <div class="dm-hp">HP: ${stats.hp} → <b>${getNextHP(card, stars, powerLevel)}</b>
+      <div class="dm-hp"><span${statTitleAttr('HP')}>HP</span>: ${stats.hp} → <b>${getNextHP(card, stars, powerLevel)}</b>
         · Стоимость: 1 пыль ★${stars} (есть: ${dustAvail})</div>
     </div>
     <button class="dm-btn${canUpgrade ? '' : ' dm-btn-disabled'}"
@@ -177,7 +199,7 @@ function showCardDetail(cardId) {
       ].map(([l, v]) => `
         <div class="dm-st">
           <div class="dm-sv">${v}</div>
-          <div class="dm-sl">${l}</div>
+          <div class="dm-sl"${statTitleAttr(l)}>${l}</div>
         </div>`).join('')}
     </div>
 
@@ -213,7 +235,7 @@ function showCardDetail(cardId) {
       ].map(([l, v]) => `
         <div class="dm-st">
           <div class="dm-sv" style="opacity:.45">${v}</div>
-          <div class="dm-sl">${l}</div>
+          <div class="dm-sl"${statTitleAttr(l)}>${l}</div>
         </div>`).join('')}
     </div>
   `;
@@ -273,4 +295,4 @@ function attachCardClicks(container = document) {
 }
 
 // Публичный API — явно на window для надёжного доступа из других файлов
-window.UnitCard = { buildMiniCard, showCardDetail, closeCardDetail, doUpgrade, attachCardClicks };
+window.UnitCard = { buildMiniCard, showCardDetail, closeCardDetail, doUpgrade, attachCardClicks, statTitleAttr };

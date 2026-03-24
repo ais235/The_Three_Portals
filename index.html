@@ -160,15 +160,21 @@
           </div>
           <div class="exchange-cards-row" id="exchange-cards-row"></div>
         </div>
-        <!-- Нижний блок: котёл (слева) + очередь (справа) -->
+        <!-- Нижний блок: котёл 1/4 | пыль 1/4 | очередь 2/4 -->
         <div class="exchange-bottom">
           <div class="ex-cauldron-zone">
-            <div id="ex-cauldron" class="ex-cauldron">🫕</div>
+            <button type="button" id="ex-cauldron" class="ex-cauldron"
+                    onclick="ExchangeUI.doExchange()" disabled
+                    aria-label="Переработать выбранные карты">
+              <img src="assets/icons/boiler.png" alt="" draggable="false">
+            </button>
             <div class="ex-cauldron-hint" id="ex-hint">Выбери карты сверху</div>
             <button class="ex-brew-btn" id="ex-brew-btn"
                     onclick="ExchangeUI.doExchange()" disabled>
               🔥 Переработать
             </button>
+          </div>
+          <div class="ex-dust-zone">
             <div class="ex-dust-label">Получишь пыли:</div>
             <div class="ex-dust-result" id="ex-dust-result">
               <div class="ex-dr-empty">— выбери карты —</div>
