@@ -1,6 +1,9 @@
 // ================================================================
 // WORLDMAP UI — Карта мира (зонный режим)
 // ================================================================
+// Координаты узлов: в js/data/locations.js — mapX, mapY [, mapUnit].
+// mapUnit 'percent' (по умолчанию): 0–100 внутри блока .zone-nodes.
+// mapUnit 'px': пиксели от левого верхнего угла .zone-nodes.
 
 const WorldMap = {
   currentZone: 1,
@@ -18,6 +21,65 @@ const WorldMap = {
   },
 
   init() { /* called by App.init */ },
+
+  /**
+   * Позиция узла на фоне зоны: mapX/mapY в locations.js (проценты или px).
+   * Без координат — равномерный ряд по горизонтали (fallback).
+   */
+  _positionLocNode(node, loc, index, total) {
+    node.style.position = 'absolute';
+    const usePx = loc.mapUnit === 'px';
+    const hasMap = typeof loc.mapX === 'number' && typeof loc.mapY === 'number';
+
+    if (hasMap) {
+      if (usePx) {
+        node.style.left = `${loc.mapX}px`;
+        node.style.top = `${loc.mapY}px`;
+      } else {
+        node.style.left = `${loc.mapX}%`;
+        node.style.top = `${loc.mapY}%`;
+      }
+      return;
+    }
+
+    const step = 100 / (total + 1);
+    node.style.left = `${step * (index + 1)}%`;
+    node.style.top = '50%';
+  },
+
+  /** Линия маршрута по orderX: центры иконок в координатах контейнера. */
+  _routeResizeObserver: null,
+
+  _drawRouteLines(container) {
+    const svg = container.querySelector('.zone-route-lines');
+    if (!svg) return;
+
+    const nodes = [...container.querySelectorAll('.loc-node')];
+    if (nodes.length < 2) {
+      svg.innerHTML = '';
+      return;
+    }
+
+    const cr = container.getBoundingClientRect();
+    const points = nodes.map((n) => {
+      const el = n.querySelector('.loc-icon-wrap') || n;
+      const r = el.getBoundingClientRect();
+      return {
+        x: r.left + r.width / 2 - cr.left,
+        y: r.top + r.height / 2 - cr.top,
+      };
+    });
+
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (w <= 0 || h <= 0) return;
+
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    const d = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+      .join(' ');
+    svg.innerHTML = `<path class="zone-route-path" d="${d}" fill="none" />`;
+  },
 
   /** Смена фона с плавным появлением (кнопки ‹ › между зонами). */
   _applyZoneBackground(nextSrc) {
@@ -94,9 +156,22 @@ const WorldMap = {
 
     const container = document.getElementById('zone-nodes');
     if (!container) return;
+
+    if (this._routeResizeObserver) {
+      this._routeResizeObserver.disconnect();
+      this._routeResizeObserver = null;
+    }
+
     container.innerHTML = '';
 
-    locations.forEach(loc => {
+    const routeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    routeSvg.classList.add('zone-route-lines');
+    routeSvg.setAttribute('aria-hidden', 'true');
+    container.appendChild(routeSvg);
+
+    const redrawRoute = () => this._drawRouteLines(container);
+
+    locations.forEach((loc, index) => {
       const isCompleted = this._isCompleted(loc.id);
       const isLocked    = !this._isUnlocked(loc);
       const isBoss      = !!loc.isBoss;
@@ -118,17 +193,24 @@ const WorldMap = {
         <div class="loc-name">${loc.name}</div>
         <div class="loc-stars">${starsStr}</div>`;
 
-      if (!isLocked) {
-        node.addEventListener('click', () => this.selectLocation(loc.id));
-      }
+      node.addEventListener('click', () => this.selectLocation(loc.id));
+      this._positionLocNode(node, loc, index, locations.length);
       container.appendChild(node);
     });
 
-    // Close location panel when switching zones
-    const panel = document.getElementById('location-panel');
-    if (panel) panel.classList.remove('visible');
-    const screen = document.getElementById('screen-worldmap');
-    if (screen) screen.classList.remove('location-panel-open');
+    redrawRoute();
+    requestAnimationFrame(() => requestAnimationFrame(redrawRoute));
+    if (typeof ResizeObserver !== 'undefined') {
+      this._routeResizeObserver = new ResizeObserver(redrawRoute);
+      this._routeResizeObserver.observe(container);
+    }
+
+    if (locations.length > 0) {
+      this.selectLocation(locations[0].id);
+    } else {
+      const panel = document.getElementById('location-panel');
+      if (panel) panel.classList.remove('visible');
+    }
   },
 
   selectLocation(locId) {
@@ -178,6 +260,18 @@ const WorldMap = {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    const zonePlayable = this._isZoneUnlockedForPlay(loc.zone);
+    const locUnlocked = this._isUnlocked(loc);
+    const canFight = zonePlayable && locUnlocked;
+    let fightBtnLabel = isCompleted ? '🔄 Повторить бой' : '⚔️ В бой!';
+    if (!canFight) {
+      fightBtnLabel = !zonePlayable ? '🔒 Зона недоступна' : '🔒 Локация недоступна';
+    }
+    const fightBtnHtml = canFight
+      ? `<button type="button" class="lp-fight-btn"
+                onclick="WorldMap.startBattle('${locId}')">${fightBtnLabel}</button>`
+      : `<button type="button" class="lp-fight-btn" disabled aria-disabled="true">${fightBtnLabel}</button>`;
+
     panel.innerHTML = `
       <div class="lp-shell">
         <header class="lp-header">
@@ -213,15 +307,10 @@ const WorldMap = {
           </section>
         </div>
 
-        <button type="button" class="lp-fight-btn"
-                onclick="WorldMap.startBattle('${locId}')">
-          ${isCompleted ? '🔄 Повторить бой' : '⚔️ В бой!'}
-        </button>
+        ${fightBtnHtml}
       </div>`;
 
     panel.classList.add('visible');
-    const screen = document.getElementById('screen-worldmap');
-    if (screen) screen.classList.add('location-panel-open');
   },
 
   prevZone() {
@@ -235,6 +324,7 @@ const WorldMap = {
   startBattle(locId) {
     const loc = LOCATIONS.find(l => l.id === locId);
     if (!loc) return;
+    if (!this._isZoneUnlockedForPlay(loc.zone) || !this._isUnlocked(loc)) return;
     if (typeof SquadSelect !== 'undefined') {
       SquadSelect.open(loc);
     } else {
@@ -258,5 +348,19 @@ const WorldMap = {
     if (!loc.requires || !loc.requires.length) return true;
     if (loc.requiresAny) return loc.requires.some(id => this._isCompleted(id));
     return loc.requires.every(id => this._isCompleted(id));
+  },
+
+  /** Можно начать бой в этой зоне (зона открыта прогрессом с предыдущей). */
+  _isZoneUnlockedForPlay(zoneNum) {
+    if (zoneNum <= 1) return true;
+    const gate = {
+      2: 'boss_z1',
+      3: 'boss_z2',
+      4: 'boss_z3',
+      5: 'loc_gateway',
+    };
+    const req = gate[zoneNum];
+    if (!req) return true;
+    return this._isCompleted(req);
   },
 };
