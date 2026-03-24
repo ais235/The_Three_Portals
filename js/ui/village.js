@@ -127,9 +127,7 @@ const VillageUI = (() => {
       case 'library':  content.innerHTML = _buildLibraryHTML();  _attachLibraryEvents(); break;
     }
     // Inject back-to-village button (floats above all tab content)
-    content.insertAdjacentHTML('afterbegin',
-      `<button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>`
-    );
+    content.insertAdjacentHTML('afterbegin', App.backToVillageButtonHTML());
     // Inject NPC container and init NPC
     content.insertAdjacentHTML('beforeend',
       `<div id="npc-container-${id}"></div>`

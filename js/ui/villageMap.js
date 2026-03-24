@@ -108,14 +108,6 @@ const VillageMapUI = (() => {
 
   // ── Helpers ───────────────────────────────────────────────────
 
-  function _dustHTML() {
-    const dust = GameState.getDust();
-    return [1, 2, 3, 4, 5]
-      .filter(s => (dust[s] || 0) > 0)
-      .map(s => `<span class="dust-chip star-${s}">★${s} ${dust[s]}</span>`)
-      .join('');
-  }
-
   function _buildZone(b) {
     const dirCls   = b.tipDir   === 'below' ? 'tip-below' : '';
     const alignCls = b.tipAlign === 'start' ? 'tip-start'
@@ -188,21 +180,10 @@ const VillageMapUI = (() => {
     const screen = document.getElementById('screen-villagemap');
     if (!screen) return;
 
-    const dustHtml = _dustHTML();
-
     screen.innerHTML = `
       <div class="vm-wrap">
 
         <img class="vm-bg" src="assets/village.png" alt="Деревня" draggable="false">
-
-        <!-- Header bar -->
-        <div class="vm-header">
-          <div class="vm-title">🏘️ Деревня героев</div>
-          <div class="vm-balance">
-            <span class="vm-coins">💰 <strong id="vm-coins-val">${GameState.coins}</strong></span>
-            ${dustHtml ? `<div class="vm-dust">${dustHtml}</div>` : ''}
-          </div>
-        </div>
 
         <!-- Кликабельные зоны зданий — позиционируются через _fitZones() -->
         <div class="vm-zones">

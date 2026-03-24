@@ -54,8 +54,7 @@
       <img class="building-bg" id="zone-bg" src="assets/zones/zone1.png" alt="">
 
       <!-- Back button -->
-      <button class="btn-back-village"
-              onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
 
       <!-- Zone title bar (top centre) -->
       <div class="zone-title-bar">
@@ -142,7 +141,7 @@
     <div id="screen-exchange" class="screen hidden">
       <img class="building-bg" src="assets/exchange_bg.png"
            onerror="this.src='assets/building-bg.png'">
-      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
       <div id="npc-container-exchange" class="npc-fixed-left"></div>
       <div class="exchange-main">
         <!-- Верхний блок: вертикальный скролл карточек -->
@@ -186,7 +185,7 @@
     <!-- ── LIBRARY SCREEN ──────────────────────────────── -->
     <div id="screen-library" class="screen hidden">
       <img class="building-bg" src="assets/building-bg.png" alt="">
-      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
       <div id="npc-container-library" class="npc-fixed-left"></div>
       <div class="library-content">
         <div class="library-header">
@@ -212,7 +211,7 @@
 
       <!-- Balance bar -->
       <div class="village-balance-bar">
-        <button id="v-map-back" class="v-back-btn">← Деревня</button>
+        <button type="button" id="v-map-back" class="btn-back-village v-back-btn" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
         <div class="vb-coins">💰 <strong id="v-coins">0</strong> монет</div>
         <div class="vb-dust" id="v-dust"></div>
       </div>
@@ -295,7 +294,7 @@
     <!-- ── BARRACKS SCREEN ───────────────────────────────── -->
     <div id="screen-barracks" class="screen hidden">
       <img class="barracks-bg" src="assets/barracks_bg.png" alt="">
-      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
       <div id="npc-container-barracks"></div>
       <div class="barracks-header">
         <h2>🏕️ Казарма</h2>
@@ -327,7 +326,7 @@
     <div id="screen-arsenal" class="screen hidden">
       <img class="building-bg" src="assets/arsenal_bg.jpg" onerror="this.src='assets/barracks_bg.png'">
 
-      <button class="btn-back-village" onclick="App.showScreen('villagemap')">← Деревня</button>
+      <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
 
       <!-- NPC справа — Каптенармус Бронн -->
       <div id="npc-container-arsenal" class="npc-fixed-right"></div>
@@ -413,9 +412,11 @@
     <!-- ── HUD RESOURCES ───────────────────────────────────── -->
     <div id="hud-resources" class="hidden">
       <span id="hud-coins">💰 <b id="coins-val">0</b></span>
-      <span class="hud-dust" id="hud-d1">★1 <b>0</b></span>
-      <span class="hud-dust" id="hud-d2">★2 <b>0</b></span>
-      <span class="hud-dust" id="hud-d3">★3 <b>0</b></span>
+      <span class="hud-dust" id="hud-d1">★1: <b>0</b></span>
+      <span class="hud-dust" id="hud-d2">★2: <b>0</b></span>
+      <span class="hud-dust" id="hud-d3">★3: <b>0</b></span>
+      <span class="hud-dust" id="hud-d4">★4: <b>0</b></span>
+      <span class="hud-dust" id="hud-d5">★5: <b>0</b></span>
     </div>
 
   </div><!-- #app -->

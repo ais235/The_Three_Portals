@@ -490,12 +490,19 @@ const App = {
     const dust  = GameState.getDust ? GameState.getDust() : {};
     const coinsEl = document.getElementById('coins-val');
     if (coinsEl) coinsEl.textContent = coins;
-    const d1 = document.getElementById('hud-d1');
-    if (d1) { const b = d1.querySelector('b'); if (b) b.textContent = dust[1] || 0; }
-    const d2 = document.getElementById('hud-d2');
-    if (d2) { const b = d2.querySelector('b'); if (b) b.textContent = dust[2] || 0; }
-    const d3 = document.getElementById('hud-d3');
-    if (d3) { const b = d3.querySelector('b'); if (b) b.textContent = dust[3] || 0; }
+    for (let s = 1; s <= 5; s++) {
+      const el = document.getElementById(`hud-d${s}`);
+      if (!el) continue;
+      const b = el.querySelector('b');
+      if (b) b.textContent = dust[s] ?? 0;
+    }
+  },
+
+  /** Кнопка «Назад в деревню»: иконка + подсказка снизу при наведении. */
+  backToVillageButtonHTML(extraClasses = '', onClick = '') {
+    const cls = extraClasses ? ` ${extraClasses}` : '';
+    const handler = onClick || `App.showScreen('villagemap')`;
+    return `<button type="button" class="btn-back-village${cls}" onclick="${handler}" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>`;
   },
 
   // ── Main menu ──────────────────────────────────────────────────
@@ -769,7 +776,7 @@ const App = {
       btns.innerHTML = `
         <button class="result-btn" onclick="${retryTarget}">🔄 Повторить</button>
         ${mapBtn}
-        <button class="result-btn" onclick="App.showScreen('villagemap')">🏘 В деревню</button>
+        ${this.backToVillageButtonHTML('btn-back-village--inline')}
       `;
     }
 
