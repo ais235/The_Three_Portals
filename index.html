@@ -235,23 +235,28 @@
     <!-- ── BATTLE SCREEN ────────────────────────────────── -->
     <div id="screen-battle" class="screen hidden">
 
-      <div id="battle-topbar">
-        <div class="btb-round">Раунд: <span id="round-num">1</span></div>
+      <div id="battle-turn-order" class="battle-turn-order" aria-label="Очерёдность ходов">
+        <span class="turn-order-label">Очерёдность</span>
+        <div id="turn-order-track" class="turn-order-track"></div>
+      </div>
+
+      <div class="battle-status-strip">
         <div class="btb-status" id="battle-status-text">Приготовьтесь к бою!</div>
-        <div class="btb-controls">
-          <button id="btn-auto" class="battle-ctrl-btn" onclick="Battle.toggleAuto()">🤖 Авто</button>
-          <button id="btn-fast" class="battle-ctrl-btn" onclick="Battle.runFast()">⚡ Быстро</button>
-          <button class="battle-ctrl-btn danger" onclick="Battle.exit()">✕ Выйти</button>
-        </div>
       </div>
 
       <div id="battlefield">
         <div id="ally-side" class="battlefield-side ally-side">
           <div class="side-label ally-label">СОЮЗНИКИ</div>
-          <div class="cols-wrapper ally-cols">
-            <div class="bf-col" id="ally-col-3" data-col="3"><div class="col-label">Кол.3 Задний</div></div>
-            <div class="bf-col" id="ally-col-2" data-col="2"><div class="col-label">Кол.2 Средний</div></div>
-            <div class="bf-col" id="ally-col-1" data-col="1"><div class="col-label">Кол.1 Передний</div></div>
+          <div class="bf-grid ally-bf-grid" id="allies-grid">
+            <div class="bf-cell" data-row="1" data-col="1"></div>
+            <div class="bf-cell" data-row="1" data-col="2"></div>
+            <div class="bf-cell" data-row="1" data-col="3"></div>
+            <div class="bf-cell" data-row="2" data-col="1"></div>
+            <div class="bf-cell" data-row="2" data-col="2"></div>
+            <div class="bf-cell" data-row="2" data-col="3"></div>
+            <div class="bf-cell" data-row="3" data-col="1"></div>
+            <div class="bf-cell" data-row="3" data-col="2"></div>
+            <div class="bf-cell" data-row="3" data-col="3"></div>
           </div>
         </div>
         <div class="battlefield-divider">
@@ -261,31 +266,69 @@
         </div>
         <div id="enemy-side" class="battlefield-side enemy-side">
           <div class="side-label enemy-label">ВРАГИ</div>
-          <div class="cols-wrapper enemy-cols">
-            <div class="bf-col" id="enemy-col-1" data-col="1"><div class="col-label">Кол.1 Передний</div></div>
-            <div class="bf-col" id="enemy-col-2" data-col="2"><div class="col-label">Кол.2 Средний</div></div>
-            <div class="bf-col" id="enemy-col-3" data-col="3"><div class="col-label">Кол.3 Задний</div></div>
+          <div class="bf-grid enemy-bf-grid" id="enemies-grid">
+            <div class="bf-cell" data-row="1" data-col="1"></div>
+            <div class="bf-cell" data-row="1" data-col="2"></div>
+            <div class="bf-cell" data-row="1" data-col="3"></div>
+            <div class="bf-cell" data-row="2" data-col="1"></div>
+            <div class="bf-cell" data-row="2" data-col="2"></div>
+            <div class="bf-cell" data-row="2" data-col="3"></div>
+            <div class="bf-cell" data-row="3" data-col="1"></div>
+            <div class="bf-cell" data-row="3" data-col="2"></div>
+            <div class="bf-cell" data-row="3" data-col="3"></div>
           </div>
         </div>
       </div>
 
-      <div id="action-bar">
-        <div id="current-unit-info">
-          <span id="cur-unit-icon">⚔️</span>
-          <span id="cur-unit-name">—</span>
-          <span id="cur-unit-hp" class="cur-hp"></span>
+      <div id="battle-bottom">
+        <div id="battle-log-container">
+          <div class="log-header">📜 Лог боя</div>
+          <div id="battle-log"></div>
         </div>
-        <div id="action-buttons">
-          <button id="btn-attack"  class="action-btn" onclick="Battle.playerAttack()"  disabled>⚔️ Атака</button>
-          <button id="btn-ability" class="action-btn ability-btn" onclick="Battle.playerAbility()" disabled>✨ Способность</button>
-          <button id="btn-skip"    class="action-btn skip-btn"   onclick="Battle.playerSkip()"    disabled>⏭ Пропустить</button>
+
+        <div id="action-bar">
+          <div id="current-unit-info">
+            <span id="cur-unit-icon">⚔️</span>
+            <span id="cur-unit-name">—</span>
+            <span id="cur-unit-hp" class="cur-hp"></span>
+          </div>
+          <div id="action-buttons">
+            <button id="btn-attack" class="action-btn" onclick="Battle.playerAttack()" disabled>⚔️ Атака</button>
+            <button id="btn-ability" class="action-btn ability-btn" onclick="Battle.playerAbility()" disabled
+              onmouseenter="BattlefieldUI.showAbilityTooltip(event)" onmouseleave="BattlefieldUI.hideAbilityTooltip()" onmousemove="BattlefieldUI.moveAbilityTooltip(event)">✨ Способность</button>
+            <button id="btn-skip" class="action-btn skip-btn" onclick="Battle.playerSkip()" disabled>⏭ Пропустить</button>
+          </div>
+          <div id="target-hint" class="target-hint hidden">👆 Выберите цель</div>
         </div>
-        <div id="target-hint" class="target-hint hidden">👆 Выберите цель</div>
+
+        <aside id="battle-control-panel" class="battle-control-panel">
+          <div class="battle-round-box">
+            <div class="battle-round-label">Раунд</div>
+            <div class="battle-round-num" id="round-num">1</div>
+          </div>
+          <button id="btn-auto" type="button" class="battle-ctrl-btn" onclick="Battle.toggleAuto()">🤖 Авто</button>
+          <button id="btn-fast" type="button" class="battle-ctrl-btn" onclick="Battle.runFast()">⚡ Быстро</button>
+          <button type="button" class="battle-ctrl-btn danger" onclick="Battle.exit()">✕ Выйти</button>
+        </aside>
       </div>
 
-      <div id="battle-log-container">
-        <div class="log-header">📜 Лог боя</div>
-        <div id="battle-log"></div>
+      <div id="battle-skill-tooltip" class="battle-skill-tooltip" role="tooltip" hidden></div>
+
+      <div id="unit-detail-modal" class="unit-detail-modal hidden" onclick="BattlefieldUI.closeUnitDetail(event)">
+        <div class="unit-detail-card" onclick="event.stopPropagation()">
+          <button type="button" class="unit-detail-close" onclick="BattlefieldUI.closeUnitDetail()" aria-label="Закрыть">✕</button>
+          <div class="unit-detail-head">
+            <div class="unit-detail-portrait" id="ud-portrait">⚔️</div>
+            <div class="unit-detail-title-block">
+              <div class="unit-detail-name" id="ud-name">—</div>
+              <div class="unit-detail-hpbar"><div class="unit-detail-hpfill" id="ud-hp-fill"></div></div>
+              <div class="unit-detail-hptext" id="ud-hp-text">—</div>
+            </div>
+          </div>
+          <div class="unit-detail-stats" id="ud-stats"></div>
+          <div class="unit-detail-section-title">Способности и заклинания</div>
+          <div class="unit-detail-abilities" id="ud-abilities"></div>
+        </div>
       </div>
 
       <!-- Battle result overlay -->

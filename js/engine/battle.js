@@ -143,6 +143,34 @@ const Battle = (() => {
     return Math.max(1, Math.round((atk - def) * random));
   }
 
+  /** Оценка урона для превью в UI (без случайного разброса, без уклонения). */
+  function estimateAttackDamage(attacker, target) {
+    if (!state || !attacker || !target || !attacker.isAlive || !target.isAlive) return null;
+    const attackType = attacker.attackType || 'melee';
+    let rangeMod = 1.0;
+    if (attackType === 'ranged' && attacker.rangeModifiers) {
+      const mod = attacker.rangeModifiers[target.column];
+      if (mod === null || mod === undefined) return { unreachable: true };
+      rangeMod = mod;
+    }
+    let atk, def;
+    if (attackType === 'melee') {
+      atk = attacker.stats.meleeAtk;
+      def = target.stats.meleeDef;
+    } else if (attackType === 'ranged') {
+      atk = attacker.stats.rangeAtk * rangeMod;
+      def = target.stats.rangeDef;
+    } else {
+      atk = attacker.stats.magic;
+      def = target.stats.magicDef;
+    }
+    atk *= getAttackMultiplier(attacker);
+    def *= getDefenseMultiplier(target, attacker);
+    const typical = Math.max(1, Math.round((atk - def) * 0.95));
+    const crit = Math.max(1, Math.round(typical * 1.5));
+    return { unreachable: false, typical, crit, attackType, rangeMod };
+  }
+
   // Compute attack multiplier from passives
   function getAttackMultiplier(unit) {
     let mult = 1.0;
@@ -584,5 +612,6 @@ const Battle = (() => {
     toggleAuto, runFast,
     getState: () => state,
     getCurrentUnit,
+    estimateAttackDamage,
   };
 })();
