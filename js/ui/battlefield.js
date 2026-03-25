@@ -290,8 +290,7 @@ const BattlefieldUI = (() => {
     });
     const hint = document.getElementById('target-hint');
     if (hint) {
-      if (enabled) hint.classList.remove('hidden');
-      else hint.classList.add('hidden');
+      hint.classList.toggle('is-inactive', !enabled);
     }
   }
 
