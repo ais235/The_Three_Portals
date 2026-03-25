@@ -417,8 +417,8 @@ const BattlefieldUI = (() => {
     picker.innerHTML = `
       ${spells.map(sp => `
         <button class="spell-btn ${sp.id === activeId ? 'active' : ''}"
-          onclick="Battle.chooseSpell('${sp.id.replace(/'/g, \"\\\\'\")}')"
-          title="${(sp.desc || sp.name).replace(/\"/g, '&quot;')}">
+          onclick="Battle.chooseSpell('${sp.id}')"
+          title="${sp.desc || sp.name}">
           ✨ ${sp.name}
         </button>
       `).join('')}
