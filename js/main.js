@@ -635,7 +635,7 @@ const App = {
       onRender:        st => BattlefieldUI.render(st),
       onEnd:           (result, st) => this.onBattleEnd(result, st),
       onEnableActions: u  => BattlefieldUI.updateCurrentUnitInfo(u),
-      onRequestTarget: () => BattlefieldUI.requestTarget(),
+      onRequestTarget: (type, payload) => BattlefieldUI.requestTarget(type, payload),
     });
   },
 

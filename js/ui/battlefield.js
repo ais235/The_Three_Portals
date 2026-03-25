@@ -38,6 +38,7 @@ const BattlefieldUI = (() => {
 
     updateCurrentUnitInfo(currentUnit);
     renderTurnOrder(battleState);
+    renderSpellPicker(battleState, currentUnit);
   }
 
   function clearField() {
@@ -145,15 +146,35 @@ const BattlefieldUI = (() => {
     const bs = Battle.getState();
     if (!bs || bs.isOver) return;
 
-    if (bs.pendingAction && unit.side === 'enemy' && unit.isAlive) {
-      markTargetable(false);
-      Battle.selectTarget(unit);
-      return;
+    if (bs.pendingAction && unit.isAlive) {
+      if (bs.pendingAction.type === 'attack' && unit.side === 'enemy') {
+        markTargetable(false);
+        Battle.selectTarget(unit);
+        return;
+      }
+      if (bs.pendingAction.type === 'spell' && bs.pendingAction.spell) {
+        const sideNeed = getSpellTargetSide(bs.pendingAction.spell);
+        if (sideNeed && unit.side === sideNeed) {
+          markTargetable(false);
+          Battle.selectTarget(unit);
+          return;
+        }
+      }
     }
 
     if (!bs.pendingAction) {
       openUnitDetail(unit);
     }
+  }
+
+  function getSpellTargetSide(spell) {
+    const t = spell?.target;
+    if (!t) return null;
+    if (t.includes('enemy')) return 'enemy';
+    if (t.includes('ally')) return 'ally';
+    // generic 'single' treated as enemy by default for now
+    if (t === 'single') return 'enemy';
+    return null;
   }
 
   function renderTurnOrder(battleState) {
@@ -283,8 +304,9 @@ const BattlefieldUI = (() => {
     el.style.top = `${Math.min(y, window.innerHeight - el.offsetHeight - 8)}px`;
   }
 
-  function markTargetable(enabled) {
-    document.querySelectorAll('.unit-card.enemy-card').forEach(c => {
+  function markTargetable(enabled, side = 'enemy') {
+    const selector = side === 'ally' ? '.unit-card.ally-card' : '.unit-card.enemy-card';
+    document.querySelectorAll(selector).forEach(c => {
       if (enabled) c.classList.add('targetable');
       else c.classList.remove('targetable');
     });
@@ -294,10 +316,23 @@ const BattlefieldUI = (() => {
     }
   }
 
-  function requestTarget() {
-    const bs = Battle.getState();
-    if (!bs) return;
-    markTargetable(true);
+  function requestTarget(type, payload) {
+    if (type === 'clear') {
+      markTargetable(false, 'enemy');
+      markTargetable(false, 'ally');
+      return;
+    }
+    if (type === 'attack') {
+      markTargetable(false, 'ally');
+      markTargetable(true, 'enemy');
+      return;
+    }
+    if (type === 'spell') {
+      const side = getSpellTargetSide(payload?.spell) || 'enemy';
+      markTargetable(false, 'enemy');
+      markTargetable(false, 'ally');
+      markTargetable(true, side);
+    }
   }
 
   function updateCurrentUnitInfo(unit) {
@@ -345,6 +380,52 @@ const BattlefieldUI = (() => {
       const mode = bs?.mode;
       btnAuto.classList.toggle('active', mode === 'auto');
     }
+  }
+
+  function renderSpellPicker(battleState, currentUnit) {
+    const picker = document.getElementById('spell-picker');
+    if (!picker) return;
+
+    const bs = Battle.getState();
+    const isPlayerTurn = currentUnit && currentUnit.side === 'ally' && bs && bs.mode === 'tactical';
+
+    const pa = bs?.pendingAction;
+    const show = isPlayerTurn && pa && (pa.type === 'spell_select' || pa.type === 'spell');
+
+    if (!show) {
+      picker.classList.add('hidden');
+      picker.innerHTML = '';
+      return;
+    }
+
+    const spells = (currentUnit?.spells || []);
+    if (!spells.length) {
+      picker.classList.add('hidden');
+      picker.innerHTML = '';
+      return;
+    }
+
+    const activeId = pa.type === 'spell' && pa.spell ? pa.spell.id : null;
+    const needsTarget = pa.type === 'spell' && pa.spell
+      ? ['single', 'single_enemy', 'single_ally'].includes(pa.spell.target)
+      : false;
+
+    const castBtn = (pa.type === 'spell' && pa.spell && !needsTarget)
+      ? `<button class="spell-btn cast" onclick="Battle.castSelectedSpell()">✅ Применить</button>`
+      : '';
+
+    picker.innerHTML = `
+      ${spells.map(sp => `
+        <button class="spell-btn ${sp.id === activeId ? 'active' : ''}"
+          onclick="Battle.chooseSpell('${sp.id.replace(/'/g, \"\\\\'\")}')"
+          title="${(sp.desc || sp.name).replace(/\"/g, '&quot;')}">
+          ✨ ${sp.name}
+        </button>
+      `).join('')}
+      ${castBtn}
+      <button class="spell-btn cancel" onclick="Battle.cancelPendingAction()">✕ Отмена</button>
+    `;
+    picker.classList.remove('hidden');
   }
 
   function showDamageNumber(instanceId, value, type) {

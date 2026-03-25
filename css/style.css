@@ -990,6 +990,43 @@ select { font-family: inherit; }
   align-items: center;
   gap: 6px;
 }
+
+/* Spell picker (выбор заклинания перед применением) */
+.spell-picker {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 6px 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.18);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+.spell-picker.hidden { display: none !important; }
+.spell-btn {
+  padding: 6px 10px;
+  border: 2px solid #3a3a6a;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card-2);
+  color: var(--text-main);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spell-btn:hover { border-color: #6060cc; background: #2a2a50; }
+.spell-btn.active { border-color: var(--text-accent); box-shadow: 0 0 10px rgba(255,224,102,0.25); }
+.spell-btn.cancel { border-color: #aa3333; color: #ffaaaa; }
+.spell-btn.cancel:hover { border-color: #ff4444; background: rgba(80,20,20,0.35); }
+.spell-btn.cast { border-color: #cc8800; color: var(--text-accent); background: rgba(60,50,0,0.22); }
+.spell-btn.cast:hover { border-color: var(--text-accent); background: rgba(80,70,0,0.28); }
 .action-hint-slot {
   flex: 0 0 auto;
   width: 100%;

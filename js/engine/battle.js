@@ -386,17 +386,17 @@ const Battle = (() => {
     const unit = getCurrentUnit();
     if (!unit || unit.side !== 'ally') return;
 
-    // For mages: use spell
+    // Toggle spell picker (player chooses spell before applying)
+    if (state.pendingAction && (state.pendingAction.type === 'spell_select' || state.pendingAction.type === 'spell')) {
+      cancelPendingAction();
+      renderAll();
+      return;
+    }
+
     if (unit.spells && unit.spells.length) {
-      const action = AI.chooseMageAction(unit, state.allies, state.enemies);
-      if (action && action.spell) {
-        const targets = resolveSpellTargets(action.spell, unit);
-        executeSpell(unit, action.spell, targets[0] || null);
-        renderAll();
-        checkBattleEnd();
-        if (!state.isOver) nextTurn();
-        return;
-      }
+      state.pendingAction = { type: 'spell_select', attacker: unit, spell: null };
+      renderAll();
+      return;
     }
 
     log('system', `${unit.name}: нет доступных способностей`);
@@ -415,7 +415,57 @@ const Battle = (() => {
     const { attacker } = state.pendingAction;
     if (!attacker || !targetUnit.isAlive) return;
 
-    executeAttack(attacker, targetUnit);
+    if (state.pendingAction.type === 'attack') {
+      executeAttack(attacker, targetUnit);
+      state.pendingAction = null;
+      renderAll();
+      checkBattleEnd();
+      if (!state.isOver) nextTurn();
+      return;
+    }
+
+    if (state.pendingAction.type === 'spell' && state.pendingAction.spell) {
+      executeSpell(attacker, state.pendingAction.spell, targetUnit);
+      state.pendingAction = null;
+      renderAll();
+      checkBattleEnd();
+      if (!state.isOver) nextTurn();
+    }
+  }
+
+  function cancelPendingAction() {
+    state.pendingAction = null;
+    state.selectedTarget = null;
+    const { onRequestTarget } = state;
+    // tell UI to clear targetable state
+    if (onRequestTarget) onRequestTarget('clear');
+  }
+
+  function chooseSpell(spellId) {
+    if (state.isOver) return;
+    const unit = getCurrentUnit();
+    if (!unit || unit.side !== 'ally') return;
+    if (!unit.spells || !unit.spells.length) return;
+
+    const spell = unit.spells.find(s => s.id === spellId);
+    if (!spell) return;
+
+    state.pendingAction = { type: 'spell', attacker: unit, spell };
+    const { onRequestTarget } = state;
+    if (onRequestTarget) onRequestTarget('spell', { spell });
+    renderAll();
+  }
+
+  function castSelectedSpell() {
+    if (!state.pendingAction || state.pendingAction.type !== 'spell' || !state.pendingAction.spell) return;
+    const { attacker, spell } = state.pendingAction;
+    const targets = resolveSpellTargets(spell, attacker);
+    if (!targets.length) {
+      log('system', `${attacker.name}: нет целей для ${spell.name}`);
+      return;
+    }
+    // For AoE/auto-target spells, apply immediately after explicit confirm
+    executeSpell(attacker, spell, targets[0] || null);
     state.pendingAction = null;
     renderAll();
     checkBattleEnd();
@@ -615,5 +665,8 @@ const Battle = (() => {
     getState: () => state,
     getCurrentUnit,
     estimateAttackDamage,
+    chooseSpell,
+    castSelectedSpell,
+    cancelPendingAction,
   };
 })();
