@@ -296,15 +296,16 @@
             <span id="cur-unit-name">—</span>
             <span id="cur-unit-hp" class="cur-hp"></span>
           </div>
-          <div class="action-bar-spacer" aria-hidden="true"></div>
-          <div class="action-hint-slot">
-            <div id="target-hint" class="target-hint is-inactive">👆 Выберите цель</div>
-          </div>
-          <div id="action-buttons">
-            <button id="btn-attack" class="action-btn" onclick="Battle.playerAttack()" disabled>⚔️ Атака</button>
-            <button id="btn-ability" class="action-btn ability-btn" onclick="Battle.playerAbility()" disabled
-              onmouseenter="BattlefieldUI.showAbilityTooltip(event)" onmouseleave="BattlefieldUI.hideAbilityTooltip()" onmousemove="BattlefieldUI.moveAbilityTooltip(event)">✨ Способность</button>
-            <button id="btn-skip" class="action-btn skip-btn" onclick="Battle.playerSkip()" disabled>⏭ Пропустить</button>
+          <div class="action-bar-mid">
+            <div class="action-hint-slot">
+              <div id="target-hint" class="target-hint is-inactive">👆 Выберите цель</div>
+            </div>
+            <div id="action-buttons">
+              <button id="btn-attack" class="action-btn" onclick="Battle.playerAttack()" disabled>⚔️ Атака</button>
+              <button id="btn-ability" class="action-btn ability-btn" onclick="Battle.playerAbility()" disabled
+                onmouseenter="BattlefieldUI.showAbilityTooltip(event)" onmouseleave="BattlefieldUI.hideAbilityTooltip()" onmousemove="BattlefieldUI.moveAbilityTooltip(event)">✨ Способность</button>
+              <button id="btn-skip" class="action-btn skip-btn" onclick="Battle.playerSkip()" disabled>⏭ Пропустить</button>
+            </div>
           </div>
         </div>
 
