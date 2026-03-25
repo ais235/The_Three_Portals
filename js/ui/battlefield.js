@@ -170,10 +170,8 @@ const BattlefieldUI = (() => {
   function getSpellTargetSide(spell) {
     const t = spell?.target;
     if (!t) return null;
-    if (t.includes('enemy')) return 'enemy';
-    if (t.includes('ally')) return 'ally';
-    // generic 'single' treated as enemy by default for now
-    if (t === 'single') return 'enemy';
+    if (t === 'single' || t === 'single_enemy' || t === 'all_enemies' || t === 'random_3') return 'enemy';
+    if (t === 'single_ally' || t === 'all_allies' || t === 'lowest_hp_ally') return 'ally';
     return null;
   }
 
@@ -265,7 +263,7 @@ const BattlefieldUI = (() => {
     const abilities = unit && unit.abilities && unit.abilities.length ? unit.abilities : null;
 
     let title = 'Способность';
-    let body = 'При нажатии герой действует по правилам класса (ИИ выбирает заклинание).';
+    let body = 'Откройте список и выберите заклинание, затем кликните по нужной цели на поле.';
     let meta = '';
 
     if (unit && unit.side === 'ally') {
@@ -406,24 +404,15 @@ const BattlefieldUI = (() => {
     }
 
     const activeId = pa.type === 'spell' && pa.spell ? pa.spell.id : null;
-    const needsTarget = pa.type === 'spell' && pa.spell
-      ? ['single', 'single_enemy', 'single_ally'].includes(pa.spell.target)
-      : false;
-
-    const castBtn = (pa.type === 'spell' && pa.spell && !needsTarget)
-      ? `<button class="spell-btn cast" onclick="Battle.castSelectedSpell()">✅ Применить</button>`
-      : '';
 
     picker.innerHTML = `
       ${spells.map(sp => `
-        <button class="spell-btn ${sp.id === activeId ? 'active' : ''}"
+        <button type="button" class="spell-btn ${sp.id === activeId ? 'active' : ''}"
           onclick="Battle.chooseSpell('${sp.id}')"
           title="${sp.desc || sp.name}">
           ✨ ${sp.name}
         </button>
       `).join('')}
-      ${castBtn}
-      <button class="spell-btn cancel" onclick="Battle.cancelPendingAction()">✕ Отмена</button>
     `;
     picker.classList.remove('hidden');
   }

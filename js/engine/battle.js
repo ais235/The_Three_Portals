@@ -276,8 +276,14 @@ const Battle = (() => {
     }
   }
 
-  // Execute a spell
-  function executeSpell(attacker, spell, target) {
+  // Execute a spell (targetUnit — клик игрока по сетке; для ИИ/null подбирается по target)
+  function executeSpell(attacker, spell, targetUnit) {
+    const targets = resolveSpellTargets(spell, attacker, targetUnit);
+    if (!targets.length) {
+      log('system', `${attacker.name}: нет целей для ${spell.name}`);
+      return;
+    }
+
     const cost = spell.cost || 0;
     if ((attacker.stats.mana || 0) < cost) {
       log('system', `${attacker.name}: недостаточно маны для ${spell.name}`);
@@ -287,7 +293,6 @@ const Battle = (() => {
 
     if (spell.damage) {
       const dmgVal  = spell.damage.min + Math.floor(Math.random() * (spell.damage.max - spell.damage.min + 1));
-      const targets = resolveSpellTargets(spell, attacker);
       targets.forEach(t => {
         if (!t.isAlive) return;
         const dmg = Math.max(1, dmgVal - t.stats.magicDef);
@@ -299,7 +304,6 @@ const Battle = (() => {
 
     if (spell.heal) {
       const healVal = spell.heal.min + Math.floor(Math.random() * (spell.heal.max - spell.heal.min + 1));
-      const targets = resolveSpellTargets(spell, attacker);
       targets.forEach(t => {
         if (!t.isAlive) return;
         const healed = Math.min(healVal, t.stats.maxHp - t.stats.hp);
@@ -314,22 +318,41 @@ const Battle = (() => {
     }
   }
 
-  function resolveSpellTargets(spell, attacker) {
+  function resolveSpellTargets(spell, attacker, pickedUnit = null) {
     const allies  = getSameSide(attacker).filter(u => u.isAlive);
     const enemies = getOpponentSide(attacker).filter(u => u.isAlive);
+
+    const isEnemyPick = pickedUnit && pickedUnit.isAlive && enemies.some(e => e.instanceId === pickedUnit.instanceId);
+    const isAllyPick  = pickedUnit && pickedUnit.isAlive && allies.some(a => a.instanceId === pickedUnit.instanceId);
 
     switch (spell.target) {
       case 'single':
       case 'single_enemy':
-        return enemies.length ? [enemies.reduce((b, t) => t.stats.hp < b.stats.hp ? t : b)] : [];
+        if (isEnemyPick) return [pickedUnit];
+        if (!pickedUnit && enemies.length)
+          return [enemies.reduce((b, t) => t.stats.hp < b.stats.hp ? t : b)];
+        return [];
+      case 'single_ally':
+        if (isAllyPick) return [pickedUnit];
+        if (!pickedUnit && allies.length) {
+          return [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
+        }
+        return [];
       case 'all_enemies':
-        return enemies;
+        if (isEnemyPick || (!pickedUnit && enemies.length)) return enemies;
+        return [];
       case 'lowest_hp_ally':
-        return allies.length ? [allies.reduce((b, t) => t.stats.hp < b.stats.hp ? t : b)] : [];
+        if (!allies.length) return [];
+        if (isAllyPick || !pickedUnit) {
+          return [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
+        }
+        return [];
       case 'all_allies':
-        return allies;
+        if (isAllyPick || (!pickedUnit && allies.length)) return allies;
+        return [];
       case 'random_3':
-        return shuffle(enemies).slice(0, 3);
+        if (isEnemyPick || (!pickedUnit && enemies.length)) return shuffle(enemies).slice(0, 3);
+        return [];
       default:
         return [];
     }
@@ -425,11 +448,35 @@ const Battle = (() => {
     }
 
     if (state.pendingAction.type === 'spell' && state.pendingAction.spell) {
-      executeSpell(attacker, state.pendingAction.spell, targetUnit);
+      const spell = state.pendingAction.spell;
+      const ok =
+        isValidSpellGridClick(spell, attacker, targetUnit);
+      if (!ok) return;
+      executeSpell(attacker, spell, targetUnit);
       state.pendingAction = null;
       renderAll();
       checkBattleEnd();
       if (!state.isOver) nextTurn();
+    }
+  }
+
+  function isValidSpellGridClick(spell, attacker, unit) {
+    const allies  = getSameSide(attacker).filter(u => u.isAlive);
+    const enemies = getOpponentSide(attacker).filter(u => u.isAlive);
+    const isEn = enemies.some(e => e.instanceId === unit.instanceId);
+    const isAl = allies.some(a => a.instanceId === unit.instanceId);
+    switch (spell.target) {
+      case 'single':
+      case 'single_enemy':
+      case 'all_enemies':
+      case 'random_3':
+        return isEn;
+      case 'single_ally':
+      case 'lowest_hp_ally':
+      case 'all_allies':
+        return isAl;
+      default:
+        return false;
     }
   }
 
@@ -454,22 +501,6 @@ const Battle = (() => {
     const { onRequestTarget } = state;
     if (onRequestTarget) onRequestTarget('spell', { spell });
     renderAll();
-  }
-
-  function castSelectedSpell() {
-    if (!state.pendingAction || state.pendingAction.type !== 'spell' || !state.pendingAction.spell) return;
-    const { attacker, spell } = state.pendingAction;
-    const targets = resolveSpellTargets(spell, attacker);
-    if (!targets.length) {
-      log('system', `${attacker.name}: нет целей для ${spell.name}`);
-      return;
-    }
-    // For AoE/auto-target spells, apply immediately after explicit confirm
-    executeSpell(attacker, spell, targets[0] || null);
-    state.pendingAction = null;
-    renderAll();
-    checkBattleEnd();
-    if (!state.isOver) nextTurn();
   }
 
   // ── Auto turn ──────────────────────────────────────────────────
@@ -666,7 +697,6 @@ const Battle = (() => {
     getCurrentUnit,
     estimateAttackDamage,
     chooseSpell,
-    castSelectedSpell,
     cancelPendingAction,
   };
 })();
