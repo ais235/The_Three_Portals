@@ -236,6 +236,10 @@
     <div id="screen-battle" class="screen hidden">
 
       <div id="battle-turn-order" class="battle-turn-order" aria-label="Очерёдность ходов">
+        <div class="battle-round-inline" aria-live="polite">
+          <span class="battle-round-label">Раунд</span>
+          <span class="battle-round-num" id="round-num">1</span>
+        </div>
         <span class="turn-order-label">Очерёдность</span>
         <div id="turn-order-track" class="turn-order-track"></div>
       </div>
@@ -302,10 +306,6 @@
         </div>
 
         <aside id="battle-control-panel" class="battle-control-panel">
-          <div class="battle-round-box">
-            <div class="battle-round-label">Раунд</div>
-            <div class="battle-round-num" id="round-num">1</div>
-          </div>
           <button id="btn-auto" type="button" class="battle-ctrl-btn" onclick="Battle.toggleAuto()">🤖 Авто</button>
           <button id="btn-fast" type="button" class="battle-ctrl-btn" onclick="Battle.runFast()">⚡ Быстро</button>
           <button type="button" class="battle-ctrl-btn danger" onclick="Battle.exit()">✕ Выйти</button>
