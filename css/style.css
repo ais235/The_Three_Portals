@@ -3058,16 +3058,23 @@ button.lp-enemy-chip:hover {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  box-sizing: border-box;
+  /* Сдвиг ниже фиксированного #hud-resources — иначе «Макс. звёзд / юнитов / выбрано» наезжает на строку пыли */
+  padding-top: max(64px, calc(env(safe-area-inset-top, 0px) + 54px));
 }
 
 .ss-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 20px;
+  padding: 14px 20px 12px;
   background: linear-gradient(135deg, #12122a, #1a1a3a);
   border-bottom: 3px solid #3a3a6a;
   flex-shrink: 0;
+}
+
+#screen-squad_select .ss-header {
+  padding-right: max(20px, min(360px, 34vw));
 }
 .ss-back-btn {
   background: rgba(255,255,255,0.06);
