@@ -147,14 +147,11 @@ function buildMiniCard(card, options = {}) {
     </div>`;
 }
 
-// ── showCardDetail ────────────────────────────────────────────
-// Показывает детальный оверлей поверх body.
-// При наличии BarracksUI — делегирует ему для полного содержимого.
-function showCardDetail(cardId) {
-  closeCardDetail(); // закрыть предыдущий если был
+// ── Содержимое модалки (перерисовка без закрытия оверлея) ─────
 
+function buildCardDetailModalInnerHTML(cardId) {
   const card = ALLIES.find(c => c.id === cardId);
-  if (!card) return;
+  if (!card) return '';
 
   const isOwned    = GameState.isUnlocked(cardId);
   const lvl        = GameState.getCardLevel(cardId);
@@ -166,10 +163,6 @@ function showCardDetail(cardId) {
   const dustAvail  = dust[stars] || 0;
   const canUpgrade = isOwned && powerLevel < maxPower && dustAvail >= 1;
 
-  const raceLabel = RACES[card.race]?.label || card.race;
-  const cls       = CLASSES[card.class] || { label: card.class };
-
-  // Правая панель — содержимое
   const rightContent = isOwned ? `
     <div class="dm-sec">УРОВЕНЬ СИЛЫ</div>
     <div class="dm-lvl">
@@ -240,33 +233,50 @@ function showCardDetail(cardId) {
     </div>
   `;
 
+  return `
+    <div class="dm">
+      <div class="dm-left ${getBgClass(card.class)}">
+        ${buildMiniCard(card, { showLocked: !isOwned })}
+      </div>
+      <div class="dm-r">
+        <button class="dm-close" onclick="closeCardDetail()">✕</button>
+        ${rightContent}
+      </div>
+    </div>`;
+}
+
+function applyCardDetailLore(cardId, rootEl) {
+  const card = ALLIES.find(c => c.id === cardId);
+  if (!card || !rootEl) return;
+  const abBlock = rootEl.querySelector('.dm-left .fc-abs');
+  if (!abBlock) return;
+  const loreRaw = card.lore ? Object.values(card.lore)[0] : null;
+  const loreText = typeof loreRaw === 'string' ? loreRaw : (loreRaw?.flavor || '');
+  abBlock.innerHTML = loreText
+    ? `<div class="dm-lore-block">"${loreText}"</div>`
+    : '';
+}
+
+// ── showCardDetail ────────────────────────────────────────────
+// Показывает детальный оверлей поверх body.
+function showCardDetail(cardId) {
+  closeCardDetail(); // закрыть предыдущий если был
+
+  const inner = buildCardDetailModalInnerHTML(cardId);
+  if (!inner) return;
+
   const overlay = document.createElement('div');
   overlay.className = 'card-detail-overlay';
   overlay.innerHTML = `
     <div class="card-detail-modal" onclick="event.stopPropagation()">
-      <div class="dm">
-        <div class="dm-left ${getBgClass(card.class)}">
-          ${buildMiniCard(card, { showLocked: !isOwned })}
-        </div>
-        <div class="dm-r">
-          <button class="dm-close" onclick="closeCardDetail()">✕</button>
-          ${rightContent}
-        </div>
-      </div>
+      ${inner}
     </div>`;
 
   overlay.addEventListener('click', closeCardDetail);
   document.body.appendChild(overlay);
 
-  // В левой колонке заменяем блок способностей на лор карты
-  const abBlock = overlay.querySelector('.dm-left .fc-abs');
-  if (abBlock) {
-    const loreRaw = card.lore ? Object.values(card.lore)[0] : null;
-    const loreText = typeof loreRaw === 'string' ? loreRaw : (loreRaw?.flavor || '');
-    abBlock.innerHTML = loreText
-      ? `<div class="dm-lore-block">"${loreText}"</div>`
-      : '';
-  }
+  const modal = overlay.querySelector('.card-detail-modal');
+  applyCardDetailLore(cardId, modal);
 }
 
 function closeCardDetail() {
@@ -276,9 +286,15 @@ function closeCardDetail() {
 function doUpgrade(cardId) {
   const result = GameState.upgradeCard(cardId);
   if (result.ok) {
-    // Перерисовать оверлей с обновлёнными данными
-    closeCardDetail();
-    showCardDetail(cardId);
+    if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('barracks', 'card_upgraded');
+    const modal = document.querySelector('.card-detail-modal');
+    const inner = buildCardDetailModalInnerHTML(cardId);
+    if (modal && inner) {
+      modal.innerHTML = inner;
+      applyCardDetailLore(cardId, modal);
+    } else {
+      showCardDetail(cardId);
+    }
     if (typeof BarracksUI !== 'undefined') BarracksUI.render();
     if (typeof VillageUI  !== 'undefined') VillageUI.renderBalance();
   } else {

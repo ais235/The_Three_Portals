@@ -3782,30 +3782,17 @@ button.lp-enemy-chip:hover {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* Отступ контента справа от колонки NPC (пузырь ~380px + фигура); было 630px — лишний зазор */
+  --barracks-gutter: clamp(300px, 42vw, 460px);
 }
 
-/* Фоновое изображение — абсолютное, фиксированное внутри экрана */
-.barracks-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  filter: brightness(0.45);
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Шапка с фильтрами поверх фона — NPC слева ~320px + пузырь */
+/* Шапка с фильтрами — как библиотека/арсенал: фон картинки на весь экран, без затемняющей плашки */
 .barracks-header {
   position: relative;
   z-index: 5;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.55);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  padding: 64px 32px 14px 630px;
+  background: transparent;
+  padding: 64px 32px 14px var(--barracks-gutter);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -3827,7 +3814,7 @@ button.lp-enemy-chip:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
-  padding: 24px 32px 60px 630px;
+  padding: 24px 32px 60px var(--barracks-gutter);
   align-content: flex-start;
   scrollbar-width: thin;
   scrollbar-color: rgba(212,175,55,.3) transparent;
@@ -3838,7 +3825,7 @@ button.lp-enemy-chip:hover {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 630px;
+  width: var(--barracks-gutter);
   z-index: 10;
   pointer-events: none;
 }
