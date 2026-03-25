@@ -22,6 +22,8 @@ const Battle = (() => {
   // ── Init ───────────────────────────────────────────────────────
 
   function init(allies, enemies, callbacks) {
+    document.getElementById('battle-result')?.classList.add('hidden');
+
     const allUnits = [...allies, ...enemies];
     state = {
       allies, enemies, allUnits,
