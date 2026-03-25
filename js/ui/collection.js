@@ -276,11 +276,17 @@ const CollectionUI = (() => {
   function doUpgrade(id) {
     const result = GameState.upgradeCard(id);
     if (result.ok) {
-      // Refresh modal in place
+      if (typeof NPCSystem !== 'undefined') {
+        if (result.reachedMax) NPCSystem.trigger('barracks', 'max_level');
+        else NPCSystem.trigger('barracks', 'card_upgraded');
+      }
       const ally = ALLIES.find(a => a.id === id);
       if (ally) App.openModal(buildDetailHTML(ally));
       render();
       VillageUI.renderBalance();
+      if (result.reachedMax && typeof UnitCard !== 'undefined' && UnitCard.showMaxLevelCelebration) {
+        UnitCard.showMaxLevelCelebration(id);
+      }
     } else {
       // Show error on button
       const btn = document.getElementById('upgrade-btn');

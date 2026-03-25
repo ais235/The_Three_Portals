@@ -215,7 +215,7 @@ const GameState = (() => {
     lvl.powerLevel++;
     incrementQuestProgress('upgrade_cards', 1);
     save();
-    return { ok: true };
+    return { ok: true, reachedMax: lvl.powerLevel >= maxPower };
   }
 
   // ── Equipment (2-slot: weapon + accessory per unit) ───────────

@@ -3805,19 +3805,31 @@ button.lp-enemy-chip:hover {
   margin-left: 0; /* Сбрасываем margin-left: auto для flex-раскладки */
 }
 
-/* Грид карточек — скролл поверх неподвижного фона */
+/* Грид карточек — скролл поверх неподвижного фона.
+   Раньше: minmax(220px, 1fr) + .fc width:200px → «фальшивый» зазор в ячейке; после width:100%
+   колонки с 1fr растягивались на всю ширину → карточки «толстые» в режиме «Все карты».
+   Фиксированная ширина трека = базовый размер .fc (200px): зазор только grid-gap, пропорции
+   одинаковы при любых фильтрах. */
 #barracks-grid {
   position: relative;
   z-index: 1;
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, 200px);
+  justify-content: start;
   gap: 20px;
   padding: 24px 32px 60px var(--barracks-gutter);
   align-content: flex-start;
   scrollbar-width: thin;
   scrollbar-color: rgba(212,175,55,.3) transparent;
+}
+
+#barracks-grid .fc {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 /* Казарма: зона NPC под эталонный пузырь; контент сдвинут, чтобы не пересекаться */
@@ -3857,6 +3869,162 @@ button.lp-enemy-chip:hover {
 @keyframes modal-in {
   from { transform: scale(.85); opacity: 0; }
   to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Максимум уровня силы — поздравление ─────────────────────── */
+.max-pl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(40, 28, 80, 0.55), rgba(0, 0, 0, 0.88));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation: max-pl-bg-in 0.4s ease forwards;
+}
+@keyframes max-pl-bg-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.max-pl-panel {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 36px 32px 32px;
+  border-radius: 24px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(22, 18, 42, 0.98) 0%, rgba(12, 10, 28, 0.99) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.35),
+    0 0 60px rgba(120, 80, 200, 0.35),
+    0 24px 48px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 215, 120, 0.12);
+  animation: max-pl-panel-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.15) forwards;
+}
+@keyframes max-pl-panel-in {
+  from { transform: scale(0.88) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.max-pl-shine {
+  position: absolute;
+  top: -40%;
+  left: -30%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(255, 220, 150, 0.25) 0%, transparent 65%);
+  pointer-events: none;
+  animation: max-pl-shine 3s ease-in-out infinite alternate;
+}
+@keyframes max-pl-shine {
+  from { transform: translate(0, 0) rotate(0deg); opacity: 0.6; }
+  to { transform: translate(8%, 4%) rotate(6deg); opacity: 1; }
+}
+
+.max-pl-ribbon {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 18px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(250, 199, 117, 0.95);
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 1px 12px rgba(212, 175, 55, 0.2);
+}
+
+.max-pl-crown {
+  font-size: 52px;
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 16px rgba(255, 200, 80, 0.45));
+}
+
+.max-pl-title {
+  margin: 0 0 8px 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+  font-family: inherit;
+  background: linear-gradient(90deg, #fff8e8, #fac775 45%, #d4af37);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 24px rgba(212, 175, 55, 0.35);
+}
+
+.max-pl-lead {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+.max-pl-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.max-pl-icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.max-pl-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(255, 245, 230, 0.95);
+  text-align: left;
+}
+
+.max-pl-meta {
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 215, 120, 0.85);
+  letter-spacing: 0.04em;
+}
+
+.max-pl-text {
+  margin: 0 0 24px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.max-pl-btn {
+  width: 100%;
+  max-width: 280px;
+  padding: 14px 24px;
+  border-radius: 14px;
+  border: 2px solid rgba(212, 175, 55, 0.55);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.35), rgba(140, 100, 30, 0.5));
+  color: #fff8e8;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.25);
+}
+.max-pl-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(250, 215, 140, 0.85);
+  box-shadow: 0 8px 28px rgba(212, 175, 55, 0.35);
 }
 
 .dm {

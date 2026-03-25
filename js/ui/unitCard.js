@@ -283,10 +283,61 @@ function closeCardDetail() {
   document.querySelector('.card-detail-overlay')?.remove();
 }
 
+function _escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Оверлей поздравления при достижении максимума уровня силы (★×10). */
+function showMaxLevelCelebration(cardId) {
+  const card = ALLIES.find(c => c.id === cardId);
+  if (!card) return;
+  document.getElementById('max-level-celebration-overlay')?.remove();
+
+  const lvl = GameState.getCardLevel(cardId);
+  const stars = lvl ? lvl.stars : card.starRange[0];
+  const maxPower = stars * 10;
+  const pl = lvl ? lvl.powerLevel : maxPower;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'max-level-celebration-overlay';
+  overlay.className = 'max-pl-overlay';
+  overlay.setAttribute('role', 'presentation');
+  overlay.innerHTML = `
+    <div class="max-pl-panel" role="dialog" aria-modal="true" aria-labelledby="max-pl-celebration-title">
+      <div class="max-pl-shine" aria-hidden="true"></div>
+      <div class="max-pl-ribbon">Достижение</div>
+      <div class="max-pl-crown" aria-hidden="true">🏆</div>
+      <h2 id="max-pl-celebration-title" class="max-pl-title">Максимум силы!</h2>
+      <p class="max-pl-lead">Герой полностью раскрыт</p>
+      <div class="max-pl-hero">
+        <span class="max-pl-icon">${_escHtml(card.icon || '⚔️')}</span>
+        <span class="max-pl-name">${_escHtml(card.name)}</span>
+      </div>
+      <div class="max-pl-meta">${'★'.repeat(stars)} · уровень силы ${pl} / ${maxPower}</div>
+      <p class="max-pl-text">Все характеристики доведены до предела. Такой боец — опора любого отряда.</p>
+      <button type="button" class="max-pl-btn">Превосходно!</button>
+    </div>`;
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  const btn = overlay.querySelector('.max-pl-btn');
+  if (btn) btn.addEventListener('click', close);
+  const panel = overlay.querySelector('.max-pl-panel');
+  if (panel) panel.addEventListener('click', e => e.stopPropagation());
+  document.body.appendChild(overlay);
+}
+
 function doUpgrade(cardId) {
   const result = GameState.upgradeCard(cardId);
   if (result.ok) {
-    if (typeof NPCSystem !== 'undefined') NPCSystem.trigger('barracks', 'card_upgraded');
+    if (typeof NPCSystem !== 'undefined') {
+      if (result.reachedMax) NPCSystem.trigger('barracks', 'max_level');
+      else NPCSystem.trigger('barracks', 'card_upgraded');
+    }
     const modal = document.querySelector('.card-detail-modal');
     const inner = buildCardDetailModalInnerHTML(cardId);
     if (modal && inner) {
@@ -297,6 +348,7 @@ function doUpgrade(cardId) {
     }
     if (typeof BarracksUI !== 'undefined') BarracksUI.render();
     if (typeof VillageUI  !== 'undefined') VillageUI.renderBalance();
+    if (result.reachedMax) showMaxLevelCelebration(cardId);
   } else {
     const btn = document.querySelector('.dm-btn');
     if (btn) { btn.textContent = result.reason; btn.classList.add('dm-btn-disabled'); }
@@ -311,4 +363,12 @@ function attachCardClicks(container = document) {
 }
 
 // Публичный API — явно на window для надёжного доступа из других файлов
-window.UnitCard = { buildMiniCard, showCardDetail, closeCardDetail, doUpgrade, attachCardClicks, statTitleAttr };
+window.UnitCard = {
+  buildMiniCard,
+  showCardDetail,
+  closeCardDetail,
+  doUpgrade,
+  attachCardClicks,
+  statTitleAttr,
+  showMaxLevelCelebration,
+};
