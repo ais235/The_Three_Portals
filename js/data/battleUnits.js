@@ -305,6 +305,9 @@ function calculateUnitPower(unit) {
   return Math.round(basePower * roleMod * abilityMod);
 }
 
+// Gate noisy debug logs from balancing simulation.
+const BALANCE_DEBUG = false;
+
 function calculateEnemyPower(unit) {
   return calculateUnitPower(unit);
 }
@@ -316,10 +319,12 @@ function calculateGroupPower(units) {
   const countMod = 1 + (units.length - 1) * 0.12;
   const result = Math.round(sum * countMod);
 
-  console.log('[GROUP POWER]', {
-    units: units.map(u => u.id),
-    power: result,
-  });
+  if (BALANCE_DEBUG) {
+    console.log('[GROUP POWER]', {
+      units: units.map(u => u.id),
+      power: result,
+    });
+  }
 
   return result;
 }
@@ -388,16 +393,18 @@ function pickEncounterForLocation(location, stars, level) {
     chosen = ties[Math.floor(Math.random() * ties.length)];
   }
 
-  console.log('[ENCOUNTER PICK]', {
-    location: location.id,
-    chosen: chosen.enc.id,
-    power: chosen.power,
-    target: location.targetPower,
-    pickMode: inRange.length ? 'in_range' : 'nearest',
-    rejected: scored
-      .filter(x => x.enc.id !== chosen.enc.id)
-      .map(x => ({ id: x.enc.id, power: x.power })),
-  });
+  if (BALANCE_DEBUG) {
+    console.log('[ENCOUNTER PICK]', {
+      location: location.id,
+      chosen: chosen.enc.id,
+      power: chosen.power,
+      target: location.targetPower,
+      pickMode: inRange.length ? 'in_range' : 'nearest',
+      rejected: scored
+        .filter(x => x.enc.id !== chosen.enc.id)
+        .map(x => ({ id: x.enc.id, power: x.power })),
+    });
+  }
 
   return chosen.enc;
 }
@@ -443,36 +450,220 @@ function applyEnemySynergies(units) {
   }
 }
 
-// Обучающая кривая зоны 1: метки для лога [EARLY BALANCE]
-const EARLY_BALANCE_NOTE_BY_LOC = {
-  loc_1: 'training',
-  loc_2: 'challenge',
-  loc_3a: 'test',
-  loc_3b: 'test',
-};
+// ── Balance table generation (min/max player power + targetPower) ─────────────
+let BALANCE_TABLE_CACHE = null;
+
+function getLocationDifficultyNote(location) {
+  if (location?.isBoss) return 'hard';
+  const zone = location?.zone ?? 1;
+  if (zone <= 1) return 'training';
+  if (zone === 2) return 'normal';
+  return 'hard';
+}
+
+function getRecommendedEnemyCountRange(maxUnits) {
+  if (maxUnits <= 2) return { baseMin: 1, baseMax: 2 }; // 70% base, 30% +1
+  if (maxUnits === 3) return { baseMin: 2, baseMax: 3 };
+  return { baseMin: 3, baseMax: 4 };
+}
+
+function sampleEnemyCountWithPlusOne(location) {
+  const maxUnits = location?.maxUnits ?? 1;
+  const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
+  const base = baseMin + Math.floor(Math.random() * (baseMax - baseMin + 1));
+  return Math.random() < 0.3 ? base + 1 : base;
+}
+
+function createAllyForPowerSim(allyId, stars, powerLevel, col = 1, row = 1) {
+  const ally = (typeof ALLIES !== 'undefined') ? ALLIES.find(a => a.id === allyId) : null;
+  if (!ally) return null;
+  const b = ally.base || {};
+  const cls = (typeof CLASSES !== 'undefined') ? (CLASSES[ally.class] || {}) : {};
+
+  const stats = {
+    hp:        calcStat(b.hp || 0, stars, powerLevel),
+    maxHp:     calcStat(b.hp || 0, stars, powerLevel),
+    meleeAtk:  calcStat(b.meleeAtk || 0, stars, powerLevel),
+    meleeDef:  calcStat(b.meleeDef || 0, stars, powerLevel),
+    rangeAtk:  calcStat(b.rangeAtk || 0, stars, powerLevel),
+    rangeDef:  calcStat(b.rangeDef || 0, stars, powerLevel),
+    magic:     calcStat(b.magic || 0, stars, powerLevel),
+    magicDef:  calcStat(b.magicDef || 0, stars, powerLevel),
+    mana:      b.mana ? calcStat(b.mana, stars, powerLevel) : 0,
+    maxMana:   b.mana ? calcStat(b.mana, stars, powerLevel) : 0,
+    manaRegen: b.manaRegen || 0,
+    initiative: calcInitiative(b.initiative, stars, powerLevel),
+  };
+
+  return {
+    id: allyId,
+    name: ally.name,
+    icon: ally.icon,
+    class: ally.class,
+    race: ally.race,
+    instanceId: `${allyId}_sim_s${stars}_l${powerLevel}_${col}_${row}`,
+    side: 'ally',
+    column: col,
+    row: row,
+    stars,
+    powerLevel,
+    stats,
+    statusEffects: [],
+    isAlive: true,
+    abilityCooldowns: {},
+    hasActedThisTurn: false,
+    attackColumns: CLASS_ATTACK_COLS[ally.class] || [1],
+    attackType: cls.attackType || 'melee',
+    rangeModifiers: ally.rangeModifiers || null,
+    attackMode: ally.attackMode || null,
+    abilities: ally.abilities || [],
+    spells: ally.spells || [],
+  };
+}
+
+function buildBalanceTableForAllLocations() {
+  if (BALANCE_TABLE_CACHE) return BALANCE_TABLE_CACHE;
+
+  if (typeof LOCATIONS === 'undefined' || !Array.isArray(LOCATIONS)) return [];
+
+  const result = [];
+
+  for (const location of LOCATIONS) {
+    const maxUnits = location.maxUnits || 1;
+    const maxStars = location.maxStars || 1;
+
+    // Step 1.1 — minimum player (stars=1, level=1)
+    const eligibleMin = ALLIES.filter(a => {
+      const sr = a.starRange || [1, 1];
+      return sr[0] <= 1 && 1 <= sr[1];
+    });
+    const minUnits = eligibleMin
+      .map(a => createAllyForPowerSim(a.id, 1, 1))
+      .filter(Boolean)
+      .map(u => ({ u, p: calculateUnitPower(u) }))
+      .sort((a, b) => a.p - b.p)
+      .slice(0, Math.min(maxUnits, eligibleMin.length))
+      .map(x => x.u);
+
+    const minPlayerPower = minUnits.length ? calculateGroupPower(minUnits) : 0;
+
+    // Step 1.2 — maximum player (stars=maxStars, level=stars*10)
+    const levelMax = maxStars * 10;
+    const eligibleMax = ALLIES.filter(a => {
+      const sr = a.starRange || [1, 1];
+      return sr[0] <= maxStars && maxStars <= sr[1];
+    });
+    const maxUnitsList = eligibleMax
+      .map(a => createAllyForPowerSim(a.id, maxStars, levelMax))
+      .filter(Boolean)
+      .map(u => ({ u, p: calculateUnitPower(u) }))
+      .sort((a, b) => b.p - a.p)
+      .slice(0, Math.min(maxUnits, eligibleMax.length))
+      .map(x => x.u);
+
+    const maxPlayerPower = maxUnitsList.length ? calculateGroupPower(maxUnitsList) : 0;
+
+    const midPlayerPower = (minPlayerPower + maxPlayerPower) / 2;
+
+    // Step 2 — targetPower
+    const targetPower = [
+      Math.round(minPlayerPower * 1.1),
+      Math.round(midPlayerPower * 1.05),
+    ].sort((a, b) => a - b);
+
+    // Step 3 — recommended enemies count range (base + possible +1)
+    const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
+    // Spec: recommendation shows base range (70%), while +1 is handled during actual spawn.
+    const recommendedEnemies = `${baseMin}–${baseMax}`;
+    const notes = getLocationDifficultyNote(location);
+
+    // Mutate location for later battle scaling.
+    location.minPlayerPower = minPlayerPower;
+    location.maxPlayerPower = maxPlayerPower;
+    location.midPlayerPower = midPlayerPower;
+    location.targetPower = targetPower;
+    location.recommendedEnemies = recommendedEnemies;
+    location.notes = notes;
+
+    result.push({
+      location: location.id,
+      maxStars,
+      maxUnits,
+      minPlayerPower,
+      maxPlayerPower,
+      targetPower,
+      recommendedEnemies,
+      notes,
+    });
+  }
+
+  console.log('[BALANCE TABLE]', result);
+  BALANCE_TABLE_CACHE = result;
+  return result;
+}
+
+function applyEnemyStatScale(units, scale) {
+  if (!units || !units.length) return;
+  for (const unit of units) {
+    if (!unit?.stats) continue;
+    const s = unit.stats;
+
+    // Spec: scale maxHp + all attack/def stats. Round after applying.
+    s.maxHp = Math.round((s.maxHp || 0) * scale);
+    s.hp = s.maxHp; // enemies spawn at full HP
+
+    s.meleeAtk = Math.round((s.meleeAtk || 0) * scale);
+    s.rangeAtk = Math.round((s.rangeAtk || 0) * scale);
+    s.magic = Math.round((s.magic || 0) * scale);
+
+    s.meleeDef = Math.round((s.meleeDef || 0) * scale);
+    s.rangeDef = Math.round((s.rangeDef || 0) * scale);
+    s.magicDef = Math.round((s.magicDef || 0) * scale);
+  }
+}
+
+function normalizeEncounterToCount(encounter, location, desiredCount) {
+  const pool = location.enemies || [];
+  const enemies = (encounter.enemies || []).slice();
+
+  while (enemies.length < desiredCount && pool.length) {
+    enemies.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  if (enemies.length > desiredCount) enemies.splice(desiredCount);
+
+  return {
+    id: `${encounter.id}_c${desiredCount}`,
+    enemies,
+  };
+}
 
 // ── Generate enemies from a location definition ──────────────────
-function generateLocationEnemies(location) {
-  const zone    = location.zone || 1;
-  const stars   = Math.min(Math.max(zone - 1, 1), 5);
-  const level   = Math.max(1, (zone - 1) * 2);
+function generateLocationEnemies(location, playerUnits = null) {
+  // Ensure we have per-location min/max, targetPower, midPlayerPower.
+  if (!BALANCE_TABLE_CACHE) buildBalanceTableForAllLocations();
+
+  const zone = location.zone || 1;
+  const stars = Math.min(Math.max(zone - 1, 1), 5);
+  const level = Math.max(1, (zone - 1) * 2);
+
+  const desiredEnemyCount = sampleEnemyCountWithPlusOne(location);
 
   let enemies = [];
-  let chosenEncounter = null;
+  let spawnEncounter = null;
 
   if (location.encounters && location.encounters.length) {
-    chosenEncounter = pickEncounterForLocation(location, stars, level);
-    enemies = buildEncounterPlacedUnits(chosenEncounter, stars, level);
+    const chosen = pickEncounterForLocation(location, stars, level);
+    spawnEncounter = normalizeEncounterToCount(chosen, location, desiredEnemyCount);
+    enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
   } else {
-    const pool    = location.enemies || [];
-    const [minC, maxC] = location.enemyCount || [1, 2];
-    const count   = minC + Math.floor(Math.random() * (maxC - minC + 1));
+    const pool = location.enemies || [];
+    const templateIds = pool.length
+      ? Array.from({ length: desiredEnemyCount }, () => pool[Math.floor(Math.random() * pool.length)])
+      : [];
 
-    // Track how many are placed in each column
     const colCount = { 1: 0, 2: 0, 3: 0 };
-
-    // For boss locations, put first enemy (the boss) at col 1
-    const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
+    enemies = [];
 
     templateIds.forEach(templateId => {
       const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
@@ -481,7 +672,7 @@ function generateLocationEnemies(location) {
       // Pick column based on template's attackType / class
       let col = 1;
       const at = tmpl.attackType || 'melee';
-      if (at === 'ranged')     col = 2;
+      if (at === 'ranged') col = 2;
       else if (at === 'magic') col = 3;
 
       const row = colCount[col] + 1;
@@ -490,32 +681,42 @@ function generateLocationEnemies(location) {
       const e = createBattleEnemy(templateId, col, row, stars, level);
       if (e) enemies.push(e);
     });
+
+    spawnEncounter = { id: `generated_c${desiredEnemyCount}`, enemies: templateIds };
   }
 
   applyEnemySynergies(enemies);
 
-  const totalPower = calculateGroupPower(enemies);
+  // Step 4 — auto scale to targetEncounterPower
+  const baseEncounterPower = calculateGroupPower(enemies);
+  const tp = location.targetPower || [baseEncounterPower, baseEncounterPower];
+  const targetEncounterPower = Math.round(tp[0] + Math.random() * (tp[1] - tp[0]));
 
-  const earlyNote = EARLY_BALANCE_NOTE_BY_LOC[location.id];
-  if (earlyNote && chosenEncounter) {
-    console.log('[EARLY BALANCE]', {
+  let scale = baseEncounterPower > 0 ? (targetEncounterPower / baseEncounterPower) : 1;
+  // Clamp to spec.
+  scale = Math.max(0.85, Math.min(1.15, scale));
+
+  applyEnemyStatScale(enemies, scale);
+
+  const scaledPower = calculateGroupPower(enemies);
+
+  console.log('[ENEMY SCALE]', {
+    location: location.id,
+    encounter: spawnEncounter?.id,
+    basePower: baseEncounterPower,
+    targetPower: targetEncounterPower,
+    scaledPower,
+    scale,
+  });
+
+  if (BALANCE_DEBUG) {
+    console.log('[ENEMY POWER V2]', {
       location: location.id,
-      encounter: chosenEncounter.id,
-      enemyPower: totalPower,
-      note: earlyNote,
+      enemies: enemies.map(e => e.id),
+      unitCount: enemies.length,
+      power: scaledPower,
     });
   }
-
-  console.log('[ENEMY POWER V2]', {
-    location: location.id,
-    enemies: enemies.map(e => e.id),
-    unitCount: enemies.length,
-    power: totalPower,
-  });
-  console.log('[UNIT POWER]', enemies.map(u => ({
-    id: u.id,
-    power: calculateUnitPower(u),
-  })));
 
   return enemies;
 }
@@ -537,4 +738,11 @@ function createTestBattle() {
   ];
 
   return { allies, enemies };
+}
+
+// Precompute balance table once (for targetPower + enemy scaling micro-correction).
+try {
+  buildBalanceTableForAllLocations();
+} catch (e) {
+  // If balancing simulation fails, the game can still proceed with existing targetPower.
 }

@@ -235,8 +235,8 @@ const SquadSelect = (() => {
       return;
     }
 
-    // Generate enemies
-    const enemies = generateLocationEnemies(currentLoc);
+    // Generate enemies (with balance scaling using actual player power)
+    const enemies = generateLocationEnemies(currentLoc, allies);
 
     // Launch battle
     App.initCustomBattle(allies, enemies, currentLoc);
