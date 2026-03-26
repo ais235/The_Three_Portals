@@ -142,7 +142,7 @@ const Battle = (() => {
     def *= getDefenseMultiplier(target, attacker);
 
     const random = 0.9 + Math.random() * 0.2;
-    return Math.max(1, Math.round((atk - def) * random));
+    return Math.max(1, Math.round((atk - def * 0.5) * random));
   }
 
   /** Оценка урона для превью в UI (без случайного разброса, без уклонения). */
@@ -171,6 +171,58 @@ const Battle = (() => {
     const typical = Math.max(1, Math.round((atk - def) * 0.95));
     const crit = Math.max(1, Math.round(typical * 1.5));
     return { unreachable: false, typical, crit, attackType, rangeMod };
+  }
+
+  function effectPreviewLabel(effectStr) {
+    if (!effectStr) return '';
+    const map = {
+      stun_1: 'оглушение 1 ход',
+      initiative_down_4: '−4 инициативы',
+      ranged_dmg_reduce_40pct: '−40% дальн. урона 3 хода',
+      remove_debuffs: 'снятие дебаффов',
+    };
+    return map[effectStr] || effectStr;
+  }
+
+  /** Средний урон заклинания по одной цели (маг. защита цели). */
+  function estimateSpellDamage(spell, target) {
+    if (!spell?.damage || !target?.isAlive) return null;
+    const mid = (spell.damage.min + spell.damage.max) / 2;
+    const v = Math.max(1, Math.round(mid - (target.stats.magicDef || 0)));
+    return v;
+  }
+
+  function estimateSpellHeal(spell, target) {
+    if (!spell?.heal || !target?.isAlive) return null;
+    const mid = (spell.heal.min + spell.heal.max) / 2;
+    return Math.min(Math.round(mid), Math.max(0, target.stats.maxHp - target.stats.hp));
+  }
+
+  /**
+   * Текст превью для карточки цели при наведении (заклинание уже выбрано, anchor — клетка под курсором).
+   */
+  function formatSpellPreviewLine(attacker, spell, anchorUnit, displayTarget) {
+    if (!state || !spell || !displayTarget?.isAlive) return '';
+    const targets = resolveSpellTargets(spell, attacker, anchorUnit);
+    const inSet = targets.some(t => t.instanceId === displayTarget.instanceId);
+    if (!inSet) return '';
+
+    const parts = [];
+    const d = estimateSpellDamage(spell, displayTarget);
+    if (d != null) parts.push(`≈${d} урона`);
+    const h = estimateSpellHeal(spell, displayTarget);
+    if (h != null && h > 0) parts.push(`+≈${h} HP`);
+    if (spell.effect) {
+      const fx = effectPreviewLabel(spell.effect);
+      if (fx) parts.push(fx);
+    }
+    if (!parts.length) parts.push('эффект');
+    return parts.join(' · ');
+  }
+
+  function getSpellPreviewTargets(attacker, spell, anchorUnit) {
+    if (!state || !spell || !attacker) return [];
+    return resolveSpellTargets(spell, attacker, anchorUnit);
   }
 
   // Compute attack multiplier from passives
@@ -245,15 +297,16 @@ const Battle = (() => {
     const isCrit = Math.random() < 0.15;
     const baseDmg = calcDmg(attacker, target, attackType, rangeMod);
     const dmg = isCrit ? Math.round(baseDmg * 1.5) : baseDmg;
-
+    const hpBefore = target.stats.hp;
     applyDamage(target, dmg, attacker.side);
+    const hpAfter = target.stats.hp;
     if (state.mode !== 'fast') {
       BattlefieldUI.showDamageNumber(target.instanceId, dmg, isCrit ? 'crit' : 'damage');
     }
 
     const rangeSuffix = (rangeMod < 1) ? ` (×${rangeMod} дальность)` : '';
     const critSuffix  = isCrit ? ' 💥 КРИ!' : '';
-    log('damage', `${attacker.name} атакует ${target.name} — ${dmg} урона${rangeSuffix}${critSuffix}`);
+    log('damage', `${attacker.name} атакует ${target.name} — ${dmg} урона (${hpBefore}/${hpAfter} HP)${rangeSuffix}${critSuffix}`);
 
     // On-hit effects
     checkOnHitEffects(attacker, target);
@@ -266,11 +319,13 @@ const Battle = (() => {
         const isCrit2 = Math.random() < 0.15;
         const base2   = calcDmg(attacker, target2, attackType, attacker.rangeModifiers?.[target2.column] ?? 1);
         const dmg2    = isCrit2 ? Math.round(base2 * 1.5) : base2;
+        const hp2Before = target2.stats.hp;
         applyDamage(target2, dmg2, attacker.side);
+        const hp2After = target2.stats.hp;
         if (state.mode !== 'fast') {
           BattlefieldUI.showDamageNumber(target2.instanceId, dmg2, isCrit2 ? 'crit' : 'damage');
         }
-        log('damage', `${attacker.name} 2й выстрел → ${target2.name} — ${dmg2} урона${isCrit2 ? ' 💥' : ''}`);
+        log('damage', `${attacker.name} 2й выстрел → ${target2.name} — ${dmg2} урона (${hp2Before}/${hp2After} HP)${isCrit2 ? ' 💥' : ''}`);
         checkOnHitEffects(attacker, target2);
       }
     }
@@ -296,9 +351,11 @@ const Battle = (() => {
       targets.forEach(t => {
         if (!t.isAlive) return;
         const dmg = Math.max(1, dmgVal - t.stats.magicDef);
+        const hpBefore = t.stats.hp;
         applyDamage(t, dmg, attacker.side);
+        const hpAfter = t.stats.hp;
         if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, dmg, 'damage');
-        log('damage', `${attacker.name} → ${spell.name} по ${t.name} — ${dmg} урона ✨`);
+        log('damage', `${attacker.name} → ${spell.name} по ${t.name} — ${dmg} урона (${hpBefore}/${hpAfter} HP) ✨`);
       });
     }
 
@@ -306,16 +363,64 @@ const Battle = (() => {
       const healVal = spell.heal.min + Math.floor(Math.random() * (spell.heal.max - spell.heal.min + 1));
       targets.forEach(t => {
         if (!t.isAlive) return;
+        const hpBefore = t.stats.hp;
         const healed = Math.min(healVal, t.stats.maxHp - t.stats.hp);
         t.stats.hp += healed;
+        const hpAfter = t.stats.hp;
         if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, healed, 'heal');
-        log('heal', `${attacker.name} → ${spell.name}: ${t.name} восстанавливает ${healed} HP 💚`);
+        log('heal', `${attacker.name} → ${spell.name}: ${t.name} восстанавливает ${healed} HP (${hpBefore}/${hpAfter}) 💚`);
       });
     }
 
     if (spell.effect) {
-      applySpellEffect(attacker, spell.effect, spell);
+      targets.forEach(t => applySpellEffectOnTarget(t, spell.effect, spell));
     }
+  }
+
+  /** Расширение целей по spell.area (ряд / колонка / крест / диагонали). */
+  function expandSpellTargetsByArea(spell, attacker, pickedUnit, base) {
+    const a = spell.area;
+    if (!a || !a.shape || a.shape === 'single') return base;
+    if (spell.target === 'lowest_hp_ally' || spell.target === 'random_3') return base;
+
+    const scope = a.scope || 'enemy';
+    const pool = scope === 'enemy'
+      ? getOpponentSide(attacker).filter(u => u.isAlive)
+      : getSameSide(attacker).filter(u => u.isAlive);
+
+    const anchorInPool = pickedUnit && pickedUnit.isAlive && pool.some(u => u.instanceId === pickedUnit.instanceId);
+    const anchor = anchorInPool ? pickedUnit : (base.length === 1 ? base[0] : null);
+    if (!anchor || !pool.some(u => u.instanceId === anchor.instanceId)) return base;
+
+    let hit = [];
+    switch (a.shape) {
+      case 'row':
+        hit = pool.filter(u => u.row === anchor.row);
+        break;
+      case 'column':
+      case 'col':
+        hit = pool.filter(u => u.column === anchor.column);
+        break;
+      case 'cross':
+        hit = pool.filter(u => u.row === anchor.row || u.column === anchor.column);
+        break;
+      case 'line':
+        hit = pool.filter(u => {
+          const dr = u.row - anchor.row;
+          const dc = u.column - anchor.column;
+          if (dr === 0 && dc === 0) return true;
+          return dr !== 0 && dc !== 0 && Math.abs(dr) === Math.abs(dc);
+        });
+        break;
+      default:
+        return base;
+    }
+
+    if (spell.target === 'single' || spell.target === 'single_enemy' || spell.target === 'single_ally') {
+      return hit.length ? hit : base;
+    }
+    const hitSet = new Set(hit.map(u => u.instanceId));
+    return base.filter(u => hitSet.has(u.instanceId));
   }
 
   function resolveSpellTargets(spell, attacker, pickedUnit = null) {
@@ -325,42 +430,72 @@ const Battle = (() => {
     const isEnemyPick = pickedUnit && pickedUnit.isAlive && enemies.some(e => e.instanceId === pickedUnit.instanceId);
     const isAllyPick  = pickedUnit && pickedUnit.isAlive && allies.some(a => a.instanceId === pickedUnit.instanceId);
 
+    let base;
     switch (spell.target) {
       case 'single':
       case 'single_enemy':
-        if (isEnemyPick) return [pickedUnit];
-        if (!pickedUnit && enemies.length)
-          return [enemies.reduce((b, t) => t.stats.hp < b.stats.hp ? t : b)];
-        return [];
+        if (isEnemyPick) base = [pickedUnit];
+        else if (!pickedUnit && enemies.length)
+          base = [enemies.reduce((b, t) => t.stats.hp < b.stats.hp ? t : b)];
+        else base = [];
+        break;
       case 'single_ally':
-        if (isAllyPick) return [pickedUnit];
-        if (!pickedUnit && allies.length) {
-          return [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
-        }
-        return [];
+        if (isAllyPick) base = [pickedUnit];
+        else if (!pickedUnit && allies.length) {
+          base = [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
+        } else base = [];
+        break;
       case 'all_enemies':
-        if (isEnemyPick || (!pickedUnit && enemies.length)) return enemies;
-        return [];
+        if (isEnemyPick || (!pickedUnit && enemies.length)) base = enemies;
+        else base = [];
+        break;
       case 'lowest_hp_ally':
-        if (!allies.length) return [];
-        if (isAllyPick || !pickedUnit) {
-          return [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
-        }
-        return [];
+        if (!allies.length) base = [];
+        else if (isAllyPick || !pickedUnit) {
+          base = [allies.reduce((b, t) => (!b || t.stats.hp < b.stats.hp) ? t : b)];
+        } else base = [];
+        break;
       case 'all_allies':
-        if (isAllyPick || (!pickedUnit && allies.length)) return allies;
-        return [];
+        if (isAllyPick || (!pickedUnit && allies.length)) base = allies;
+        else base = [];
+        break;
       case 'random_3':
-        if (isEnemyPick || (!pickedUnit && enemies.length)) return shuffle(enemies).slice(0, 3);
-        return [];
+        if (isEnemyPick || (!pickedUnit && enemies.length)) base = shuffle(enemies).slice(0, 3);
+        else base = [];
+        break;
       default:
-        return [];
+        base = [];
     }
+
+    return expandSpellTargetsByArea(spell, attacker, pickedUnit, base);
   }
 
-  function applySpellEffect(attacker, effectStr, spell) {
-    // Simple: stun_1 = stun for 1 turn on target
-    // Could expand with more complex effects
+  function applySpellEffectOnTarget(target, effectStr, spell) {
+    if (!target || !target.isAlive || !effectStr) return;
+    switch (effectStr) {
+      case 'stun_1':
+        Effects.apply(target, { type: 'stun', duration: 1 });
+        log('effect', `${target.name} оглушён (${spell.name}) 💫`);
+        break;
+      case 'initiative_down_4':
+        target.stats.initiative = Math.max(0.5, (target.stats.initiative || 0) - 4);
+        log('effect', `${target.name}: инициатива −4 (${spell.name})`);
+        break;
+      case 'ranged_dmg_reduce_40pct':
+        Effects.apply(target, { type: 'buff', duration: 3, value: 40 });
+        log('effect', `${target.name}: защита от дальнего боя +40% на 3 хода`);
+        break;
+      case 'remove_debuffs': {
+        const bad = new Set(['poison', 'burn', 'bleed', 'stun', 'slow', 'curse']);
+        const n = (target.statusEffects || []).length;
+        target.statusEffects = (target.statusEffects || []).filter(e => !bad.has(e.type));
+        if (target.statusEffects.length < n)
+          log('effect', `${target.name}: дебаффы сняты (${spell.name})`);
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   function applyDamage(unit, dmg, attackerSide) {
@@ -687,15 +822,27 @@ const Battle = (() => {
     App.showScreen('villagemap');
   }
 
+  /** Сброс боя без смены экрана (новая игра с карты). */
+  function discardState() {
+    clearTimeout(state?.autoTimer);
+    state = null;
+    if (typeof BattlefieldUI !== 'undefined' && BattlefieldUI.requestTarget) {
+      BattlefieldUI.requestTarget('clear');
+    }
+  }
+
   // ── Public API ─────────────────────────────────────────────────
 
   return {
-    init, restart, exit,
+    init, restart, exit, discardState,
     playerAttack, playerAbility, playerSkip, selectTarget,
     toggleAuto, runFast,
     getState: () => state,
     getCurrentUnit,
     estimateAttackDamage,
+    getSpellPreviewTargets,
+    formatSpellPreviewLine,
+    effectPreviewLabel,
     chooseSpell,
     cancelPendingAction,
   };

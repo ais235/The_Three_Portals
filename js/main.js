@@ -3,26 +3,36 @@
 // ================================================================
 
 const SAVE_KEY = 'fcq_save_v1';
+const STARTER_PACKS = {
+  easy: ['straznik', 'kopeyshik', 'poslushnik'],      // Танк + ДПС + Хил
+  hard: ['straznik', 'luchnik', 'uchenik_ognya'],     // Танк + Стрелок + Маг
+};
 
 const DEFAULT_SAVE = {
   coins: 150,
   dust:  { 1:0, 2:0, 3:0, 4:0, 5:0 },
-  unlockedCards: [
-    'straznik','opolchenec','kopeyshik','luchnik','poslushnik',
-    'ohotnik','uchenik_ognya','elektrik','wolf',
-  ],
-  cardLevels:    {},
+  // Стартовый отряд ★1: танк / урон / поддержка (хилер)
+  unlockedCards: ['straznik', 'kopeyshik', 'poslushnik'],
+  cardLevels: {
+    straznik:   { stars: 1, powerLevel: 1 },
+    kopeyshik:  { stars: 1, powerLevel: 1 },
+    poslushnik: { stars: 1, powerLevel: 1 },
+  },
   equipped:      {},
   ownedWeapons:  [],
   completedLocations: [],
   artifacts:     [],
   lastSquad:     [],
+  starterPackChosen: false,
+  starterPackId: '',
   // ── Этап 4 ──
   shopLastRefresh:      '',     // date string YYYY-MM-DD
   shopItems:            [],     // [{ type, id, stars?, rarity?, price, purchased }]
   shopFreeRefreshUsed:  false,  // resets daily
   questLastReset:       '',     // date string
   activeQuests:         [],     // [{ id, type, label, target, progress, claimed, reward, rewardLabel }]
+  // Кристаллы ★: приоритет рецептов см. getPromoteRecipe (11+→10/0; 10+кр→9/1; 10→10/0; 9+2кр→8/2; 9+кр→9/1; 8+2кр→8/2)
+  starCrystals:         { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
 };
 
 // ── GameState ─────────────────────────────────────────────────
@@ -119,11 +129,15 @@ const GameState = (() => {
         const d = {
           ...DEFAULT_SAVE,
           ...saved,
-          dust:      { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
+          dust:          { ...DEFAULT_SAVE.dust, ...(saved.dust || {}) },
+          starCrystals:  { ...DEFAULT_SAVE.starCrystals, ...(saved.starCrystals || {}) },
           artifacts: saved.artifacts    || [],
           lastSquad: saved.lastSquad    || [],
           shopItems: saved.shopItems    || [],
           activeQuests: saved.activeQuests || [],
+          // Не показывать выбор стартовой колоды на уже существующих сейвах.
+          starterPackChosen: saved.starterPackChosen ?? true,
+          starterPackId: saved.starterPackId || '',
         };
         // Migrate old equipped format
         for (const [uid, val] of Object.entries(d.equipped || {})) {
@@ -138,12 +152,18 @@ const GameState = (() => {
   }
 
   function _ensureCardLevels(d) {
-    (d.unlockedCards || []).forEach(id => {
+    const uniq = [...new Set(d.unlockedCards || [])];
+    uniq.forEach(id => {
       if (!d.cardLevels[id]) {
         const ally = ALLIES.find(a => a.id === id);
         if (ally) d.cardLevels[id] = { stars: ally.starRange[0], powerLevel: 1 };
       }
     });
+  }
+
+  function load() {
+    data = _loadSave();
+    _ensureCardLevels(data);
   }
 
   function save() {
@@ -162,6 +182,9 @@ const GameState = (() => {
       shopFreeRefreshUsed: data.shopFreeRefreshUsed,
       questLastReset:      data.questLastReset,
       activeQuests:        data.activeQuests,
+      starCrystals:        data.starCrystals || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      starterPackChosen:   !!data.starterPackChosen,
+      starterPackId:       data.starterPackId || '',
     }));
   }
 
@@ -193,17 +216,193 @@ const GameState = (() => {
   function isUnlocked(id) { return data.unlockedCards.includes(id); }
   function getUnlocked() { return [...data.unlockedCards]; }
 
+  /** Добавляет копию карты (дубликаты не заменяются пылью). Возвращает true, если это первая копия этого id. */
   function unlockCard(id, stars) {
-    if (data.unlockedCards.includes(id)) return false;
-    data.unlockedCards.push(id);
     const ally = ALLIES.find(a => a.id === id);
-    data.cardLevels[id] = { stars: stars || ally?.starRange[0] || 1, powerLevel: 1 };
+    const s = stars ?? ally?.starRange[0] ?? 1;
+    const isFirstCopy = !data.unlockedCards.includes(id);
+    data.unlockedCards.push(id);
+    if (!data.cardLevels[id]) {
+      data.cardLevels[id] = { stars: s, powerLevel: 1 };
+    } else if (s > data.cardLevels[id].stars) {
+      data.cardLevels[id].stars = s;
+    }
     save();
-    return true; // newly unlocked
+    return isFirstCopy;
+  }
+
+  function getCardCopyCount(id) {
+    if (!id) return 0;
+    return (data.unlockedCards || []).filter(c => c === id).length;
+  }
+
+  /** Уникальные id карт в коллекции (для UI / лимита «одна копия в бою»). */
+  function getUniqueUnlockedIds() {
+    return [...new Set(data.unlockedCards || [])];
+  }
+
+  function _ensureStarCrystals() {
+    if (!data.starCrystals) data.starCrystals = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  }
+
+  function getStarCrystals() {
+    _ensureStarCrystals();
+    return { ...data.starCrystals };
+  }
+
+  function addStarCrystal(star, amount = 1) {
+    _ensureStarCrystals();
+    data.starCrystals[star] = (data.starCrystals[star] || 0) + amount;
+    save();
+  }
+
+  function spendStarCrystals(star, amount) {
+    _ensureStarCrystals();
+    if ((data.starCrystals[star] || 0) < amount) return false;
+    data.starCrystals[star] -= amount;
+    save();
+    return true;
+  }
+
+  /** Снять экипировку юнита в арсенал (`ownedWeapons`); запись в `equipped` удаляется. */
+  function _returnUnitEquipmentToArsenal(unitId, skipSave = false) {
+    _migrateEquipped();
+    const raw = data.equipped[unitId];
+    if (!raw) return;
+    const weaponId = typeof raw === 'string' ? raw : raw.weapon || null;
+    const accId = typeof raw === 'object' && raw ? raw.accessory || null : null;
+    for (const wid of [weaponId, accId]) {
+      if (wid && !data.ownedWeapons.includes(wid)) data.ownedWeapons.push(wid);
+    }
+    delete data.equipped[unitId];
+    if (!skipSave) save();
+  }
+
+  /** Снять N физических копий с полки (с конца массива). skipSave — не писать сейф (для атомарных операций). */
+  function removeCardCopies(id, count, skipSave = false) {
+    if (!id || count <= 0) return 0;
+    let removed = 0;
+    for (let i = (data.unlockedCards || []).length - 1; i >= 0 && removed < count; i--) {
+      if (data.unlockedCards[i] === id) {
+        data.unlockedCards.splice(i, 1);
+        removed++;
+      }
+    }
+    if (!data.unlockedCards.includes(id)) {
+      delete data.cardLevels[id];
+      if (data.equipped[id]) delete data.equipped[id];
+    }
+    if (!skipSave) save();
+    return removed;
+  }
+
+  /** Бейдж «кристалл»: накопилось ≥5 копий этой карты. */
+  function showCrystalProgressBadge(id) {
+    return getCardCopyCount(id) >= 5;
+  }
+
+  /** Кристаллизация: 5 копий → 1 кристалл; при ровно 5 копиях герой исчезает из коллекции (см. предупреждение в UI). */
+  function canCrystallizeCard(id) {
+    return getCardCopyCount(id) >= 5;
+  }
+
+  function crystallizeCard(id) {
+    const ally = ALLIES.find(a => a.id === id);
+    const lvl = data.cardLevels[id];
+    if (!ally || !lvl) return { ok: false, reason: 'Нет карты' };
+    if (!canCrystallizeCard(id)) {
+      return { ok: false, reason: 'Нужно минимум 5 одинаковых копий' };
+    }
+    const tier = lvl.stars;
+    removeCardCopies(id, 5, true);
+    addStarCrystal(tier, 1);
+    return { ok: true, tier };
+  }
+
+  /**
+   * Рецепт +★ — первая подходящая строка выигрывает (см. таблицу):
+   * | Ситуация                         | Рецепт   | После снятия копий (до +★ в cardLevels) |
+   * |----------------------------------|----------|----------------------------------------|
+   * | 11+ копий                        | 10 + 0   | остаётся (копий − 10), минимум 1       |
+   * | 10 копий и ≥1 кристалла          | 9 + 1    | 1 копия                                |
+   * | 10 копий без кристаллов          | 10 + 0   | 0 → push одной копии                   |
+   * | ровно 9 копий и ≥2 кристалла     | 8 + 2    | 1 копия                                |
+   * | ровно 9 копий и 1 кристалл       | 9 + 1    | 0 → push одной копии                   |
+   * | 8 копий и ≥2 кристалла           | 8 + 2    | 0 → push одной копии                   |
+   */
+  function getPromoteRecipe(id) {
+    const ally = ALLIES.find(a => a.id === id);
+    const lvl = data.cardLevels[id];
+    if (!ally || !lvl || lvl.stars >= ally.starRange[1]) return null;
+    _ensureStarCrystals();
+    const tier = lvl.stars;
+    const c = getCardCopyCount(id);
+    const cr = data.starCrystals[tier] || 0;
+    if (c >= 11) return { cardCost: 10, cryCost: 0, tier };
+    if (c >= 10 && cr >= 1) return { cardCost: 9, cryCost: 1, tier };
+    if (c >= 10) return { cardCost: 10, cryCost: 0, tier };
+    if (c === 9 && cr >= 2) return { cardCost: 8, cryCost: 2, tier };
+    if (c === 9 && cr >= 1) return { cardCost: 9, cryCost: 1, tier };
+    if (c >= 8 && cr >= 2) return { cardCost: 8, cryCost: 2, tier };
+    return null;
+  }
+
+  /** Доступно ли повышение звёздности: те же пороги, что у getPromoteRecipe. */
+  function canPromoteStar(id) {
+    return getPromoteRecipe(id) != null;
+  }
+
+  function promoteStar(id) {
+    const ally = ALLIES.find(a => a.id === id);
+    const lvl = data.cardLevels[id];
+    if (!ally || !lvl) return { ok: false, reason: 'Нет карты' };
+    if (lvl.stars >= ally.starRange[1]) return { ok: false, reason: 'Уже максимальные звёзды' };
+    const recipe = getPromoteRecipe(id);
+    if (!recipe) {
+      return { ok: false, reason: 'Нужно 11+ копий, или 10 копий (без кристаллов), или 9+1 кристалл ★, или 8+2 кристалла ★' };
+    }
+    const { cardCost, cryCost, tier } = recipe;
+    const oldStars = lvl.stars;
+    const copiesBefore = getCardCopyCount(id);
+
+    if (cryCost && !spendStarCrystals(tier, cryCost)) {
+      return { ok: false, reason: 'Недостаточно кристаллов' };
+    }
+    if (copiesBefore - cardCost === 0) {
+      _returnUnitEquipmentToArsenal(id, true);
+    }
+    removeCardCopies(id, cardCost, true);
+    if (!data.unlockedCards.includes(id)) {
+      data.unlockedCards.push(id);
+    }
+    data.cardLevels[id] = { stars: oldStars + 1, powerLevel: 1 };
+    save();
+    return { ok: true };
   }
 
   function getCardLevel(id) {
     return data.cardLevels[id] || null;
+  }
+
+  function hasStarterPackChoice() {
+    return !!data.starterPackChosen;
+  }
+
+  function chooseStarterPack(packId) {
+    const pack = STARTER_PACKS[packId];
+    if (!pack || !pack.length) return { ok: false, reason: 'Неизвестный стартовый набор' };
+
+    data.unlockedCards = [...pack];
+    data.cardLevels = {};
+    pack.forEach(id => {
+      data.cardLevels[id] = { stars: 1, powerLevel: 1 };
+    });
+    data.lastSquad = [...pack];
+    data.equipped = {};
+    data.starterPackChosen = true;
+    data.starterPackId = packId;
+    save();
+    return { ok: true };
   }
 
   function upgradeCard(id) {
@@ -319,15 +518,15 @@ const GameState = (() => {
   // ── Recycle card into dust ─────────────────────────────────────
   function recycleCard(id) {
     if (!data.unlockedCards.includes(id)) return { ok: false, reason: 'Нет такой карты' };
-    // Can't recycle if only 1 unlocked card
     if (data.unlockedCards.length <= 1) return { ok: false, reason: 'Нельзя переработать последнюю карту' };
+    const idx = data.unlockedCards.indexOf(id);
+    if (idx < 0) return { ok: false, reason: 'Нет такой карты' };
     const lvl = data.cardLevels[id] || { stars: 1 };
     const dustStar = lvl.stars;
-    data.unlockedCards = data.unlockedCards.filter(c => c !== id);
-    delete data.cardLevels[id];
-    // Unequip if equipped
-    for (const [k, v] of Object.entries(data.equipped)) {
-      if (k === id) delete data.equipped[k];
+    data.unlockedCards.splice(idx, 1);
+    if (!data.unlockedCards.includes(id)) {
+      delete data.cardLevels[id];
+      if (data.equipped[id]) delete data.equipped[id];
     }
     addDust(dustStar, 1);
     return { ok: true, dustStar };
@@ -435,10 +634,10 @@ const GameState = (() => {
     if (count > 0) incrementQuestProgress('kill_enemies', count);
   }
 
-  // ── Reset (dev) ────────────────────────────────────────────────
+  // ── Полный сброс (новая игра): стартовые монеты, базовые карты, нет прогресса локаций
   function reset() {
     localStorage.removeItem(SAVE_KEY);
-    data = _loadSave();
+    data = JSON.parse(JSON.stringify(DEFAULT_SAVE));
     _ensureCardLevels(data);
     save();
   }
@@ -449,9 +648,10 @@ const GameState = (() => {
     // equippedWeapons alias for backward compat with inventory/collection:
     get equipped() { return data.equipped; },
 
-    save, spendCoins, addCoins, getCoins,
+    load, save, spendCoins, addCoins, getCoins,
     addDust, spendDust, getDust,
-    isUnlocked, getUnlocked, unlockCard, getCardLevel, upgradeCard,
+    isUnlocked, getUnlocked, getUniqueUnlockedIds, unlockCard, getCardCopyCount, getCardLevel, upgradeCard,
+    getStarCrystals, getPromoteRecipe, showCrystalProgressBadge, canCrystallizeCard, crystallizeCard, canPromoteStar, promoteStar,
     equipWeapon, unequipWeapon, getEquipped, getEquippedSlots, getAllEquipped, getWeaponOwner,
     addWeapon, hasWeapon, getOwnedWeapons,
     recycleCard,
@@ -460,6 +660,7 @@ const GameState = (() => {
     setLastSquad, getLastSquad,
     getShopItems, buyShopItem, refreshShop,
     getActiveQuests, incrementQuestProgress, claimQuestReward, recordKills,
+    hasStarterPackChoice, chooseStarterPack,
     reset,
   };
 })();
@@ -481,6 +682,7 @@ const App = {
     this.showScreen('villagemap');
     document.getElementById('hud-resources').classList.remove('hidden');
     this.updateHUD();
+    this.promptStarterPackChoiceIfNeeded();
   },
 
   // ── HUD ────────────────────────────────────────────────────────
@@ -520,7 +722,14 @@ const App = {
   newGame() {
     const overlay = document.getElementById('main-menu-overlay');
     if (overlay) overlay.classList.add('hidden');
+    GameState.reset();
+    this._currentLocation = null;
+    if (typeof Battle !== 'undefined' && Battle.discardState) Battle.discardState();
+    this.updateHUD();
     this.showScreen('villagemap');
+    if (typeof WorldMap !== 'undefined' && WorldMap.render) WorldMap.render();
+    if (typeof BarracksUI !== 'undefined' && BarracksUI.render) BarracksUI.render();
+    this.promptStarterPackChoiceIfNeeded();
   },
 
   saveGame() {
@@ -533,6 +742,33 @@ const App = {
     const overlay = document.getElementById('main-menu-overlay');
     if (overlay) overlay.classList.add('hidden');
     this.showScreen('villagemap');
+    this.promptStarterPackChoiceIfNeeded();
+  },
+
+  promptStarterPackChoiceIfNeeded() {
+    if (!GameState.hasStarterPackChoice || GameState.hasStarterPackChoice()) return;
+    this.openModal(`
+      <div class="starter-pack-modal">
+        <h3>Выберите стартовый набор</h3>
+        <p>Это выбор стартовой сложности. Набор выдаётся один раз в начале игры.</p>
+        <div style="display:grid;gap:10px;margin-top:12px;">
+          <button class="home-btn primary" onclick="App.pickStarterPack('easy')">
+            <span class="hb-text"><strong>Танк + ДПС + Хил</strong><small>Проще и стабильнее</small></span>
+          </button>
+          <button class="home-btn" onclick="App.pickStarterPack('hard')">
+            <span class="hb-text"><strong>Танк + Стрелок + Маг</strong><small>Сложнее, выше риск потерь</small></span>
+          </button>
+        </div>
+      </div>
+    `);
+  },
+
+  pickStarterPack(packId) {
+    const result = GameState.chooseStarterPack ? GameState.chooseStarterPack(packId) : { ok: false };
+    if (!result.ok) return;
+    this.forceCloseModal();
+    this.updateHUD();
+    if (typeof BarracksUI !== 'undefined' && BarracksUI.render) BarracksUI.render();
   },
 
   openSettings() {
@@ -617,7 +853,7 @@ const App = {
   updateHomeStats() {
     const el = id => document.getElementById(id);
     if (el('stat-coins'))      el('stat-coins').textContent     = GameState.coins;
-    if (el('stat-unlocked'))   el('stat-unlocked').textContent  = GameState.getUnlocked().length;
+    if (el('stat-unlocked'))   el('stat-unlocked').textContent  = GameState.getUniqueUnlockedIds().length;
     if (el('stat-locations'))  el('stat-locations').textContent = GameState.isCompleted
       ? LOCATIONS.filter(l => GameState.isCompleted(l.id)).length
       : 0;
@@ -628,8 +864,17 @@ const App = {
   _startBattle(allies, enemies) {
     const resultEl = document.getElementById('battle-result');
     if (resultEl) resultEl.classList.add('hidden');
+    document.getElementById('btn-copy-battle-log')?.classList.add('hidden');
 
     BattleLog.init();
+    if (this._currentLocation) {
+      BattleLog.addEntry({
+        type: 'system',
+        text: `🗺️ Зона ${this._currentLocation.zone} · ${this._currentLocation.name}`,
+      });
+    } else {
+      BattleLog.addEntry({ type: 'system', text: '🗺️ Тренировочный бой' });
+    }
     Battle.init(allies, enemies, {
       onLogEntry:      e  => BattleLog.addEntry(e),
       onRender:        st => BattlefieldUI.render(st),
@@ -781,7 +1026,43 @@ const App = {
     }
 
     overlay.classList.remove('hidden');
+    document.getElementById('btn-copy-battle-log')?.classList.remove('hidden');
     this.updateHomeStats();
+  },
+
+  async copyBattleLog() {
+    const btn = document.getElementById('btn-copy-battle-log');
+    const text = (typeof BattleLog !== 'undefined' && BattleLog.getPlainText)
+      ? BattleLog.getPlainText()
+      : '';
+    if (!text) {
+      if (btn) btn.textContent = '📜 Лог пуст';
+      setTimeout(() => { if (btn) btn.textContent = '📜 Лог боя'; }, 1300);
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+      if (btn) btn.textContent = '✅ Скопировано';
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', 'readonly');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      if (btn) btn.textContent = '✅ Скопировано';
+    }
+
+    setTimeout(() => { if (btn) btn.textContent = '📜 Лог боя'; }, 1400);
   },
 
   // ── Modal ──────────────────────────────────────────────────────

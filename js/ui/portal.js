@@ -53,22 +53,22 @@ const Portal = (() => {
       ally.starRange[0] <= rolledStars && ally.starRange[1] >= rolledStars
     );
 
-    if (!pool.length) return { type: 'dust', stars: rolledStars };
+    if (!pool.length) {
+      GameState.addDust(rolledStars, 1);
+      return { type: 'dust', stars: rolledStars };
+    }
 
     const ally = pool[Math.floor(Math.random() * pool.length)];
     const isNew = !GameState.isUnlocked(ally.id);
-
-    if (isNew) {
-      GameState.unlockCard(ally.id, rolledStars);
-    } else {
-      GameState.addDust(rolledStars, 1);
-    }
+    GameState.unlockCard(ally.id, rolledStars);
+    const copyCount = GameState.getCardCopyCount(ally.id);
 
     return {
       type: isNew ? 'new_card' : 'duplicate',
       ally,
       stars: rolledStars,
       isNew,
+      copyCount,
     };
   }
 
@@ -140,7 +140,7 @@ const Portal = (() => {
     const starStr = '★'.repeat(result.stars);
     const badge = result.isNew
       ? `<div class="pr-new-badge">✦ НОВАЯ КАРТА!</div>`
-      : `<div class="pr-dup-badge">↺ Дубликат → +1 пыль ★${result.stars}</div>`;
+      : `<div class="pr-dup-badge">↺ Копия сохранена (×${result.copyCount})</div>`;
 
     return `
       <div class="portal-result-content">

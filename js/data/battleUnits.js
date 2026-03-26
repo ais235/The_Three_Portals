@@ -93,7 +93,8 @@ const T_POSLUSHNIK = {
   abilities: [],
   spells: [
     { id:'light_arrow', name:'Светлая стрела', cost:12, target:'single_enemy',
-      damage:{min:8, max:12}, desc:'Атакующее заклинание.' },
+      damage:{min:8, max:12}, area: { shape:'column', scope:'enemy' },
+      desc:'Урон по всей колонке врагов, в которую вы кликнули.' },
     { id:'minor_heal',  name:'Малый лекарь',  cost:25, target:'lowest_hp_ally',
       heal:{min:20, max:30}, desc:'Лечит союзника с наименьшим HP.' },
     { id:'blessing',    name:'Благословение', cost:35, target:'all_allies',
@@ -267,38 +268,254 @@ function createBattleEnemy(templateId, col, row, stars = 1, level = 1) {
   };
 }
 
-// ── Generate enemies from a location definition ──────────────────
-function generateLocationEnemies(location) {
-  const zone    = location.zone || 1;
-  const stars   = Math.min(Math.max(zone - 1, 1), 5);
-  const level   = Math.max(1, (zone - 1) * 2);
-  const pool    = location.enemies || [];
-  const [minC, maxC] = location.enemyCount || [1, 2];
-  const count   = minC + Math.floor(Math.random() * (maxC - minC + 1));
+// ── Debug: оценка силы юнита (не влияет на бой) ─────────────────
+function calculateUnitPower(unit) {
+  const s = unit.stats || {};
+  const atk = (s.meleeAtk || 0) + (s.rangeAtk || 0) + (s.magic || 0);
+  const def = (s.meleeDef || 0) + (s.rangeDef || 0) + (s.magicDef || 0);
 
-  const enemies = [];
-  // Track how many are placed in each column
+  const basePower =
+    0.35 * (s.maxHp || 0) +
+    3.0 * atk +
+    0.8 * def +
+    6 * (unit.initiative || s.initiative || 0);
+
+  const roleModifiers = {
+    tank: 0.9,
+    bruiser: 1.0,
+    assassin: 1.1,
+    archer: 1.1,
+    mage: 1.15,
+    healer: 0.85,
+    control: 1.1,
+    boss: 1.2,
+  };
+  const roleMod = roleModifiers[unit.role] || 1.0;
+
+  let abilityMod = 1.0;
+  if (unit.spells) {
+    if (unit.spells.some(spl => spl.type === 'heal')) abilityMod += 0.15;
+    if (unit.spells.some(spl => spl.type === 'poison')) abilityMod += 0.15;
+    if (unit.spells.some(spl => ['stun', 'freeze', 'disable'].includes(spl.type))) abilityMod += 0.2;
+  }
+
+  if ((unit.attackColumns || []).length >= 2) abilityMod += 0.1;
+  if ((s.rangeAtk || 0) > 0 || (s.magic || 0) > 0) abilityMod += 0.1;
+
+  return Math.round(basePower * roleMod * abilityMod);
+}
+
+function calculateEnemyPower(unit) {
+  return calculateUnitPower(unit);
+}
+
+function calculateGroupPower(units) {
+  if (!units || !units.length) return 0;
+
+  const sum = units.reduce((acc, u) => acc + calculateUnitPower(u), 0);
+  const countMod = 1 + (units.length - 1) * 0.12;
+  const result = Math.round(sum * countMod);
+
+  console.log('[GROUP POWER]', {
+    units: units.map(u => u.id),
+    power: result,
+  });
+
+  return result;
+}
+
+// ── Размещение врагов из одного encounter (без синергий на массиве) ──
+function buildEncounterPlacedUnits(encounter, stars, level) {
+  const units = [];
   const colCount = { 1: 0, 2: 0, 3: 0 };
 
-  // For boss locations, put first enemy (the boss) at col 1
-  const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
-
-  templateIds.forEach(templateId => {
+  (encounter.enemies || []).forEach(templateId => {
     const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
     if (!tmpl) return;
 
-    // Pick column based on template's attackType / class
     let col = 1;
     const at = tmpl.attackType || 'melee';
-    if (at === 'ranged')     col = 2;
+    if (at === 'ranged') col = 2;
     else if (at === 'magic') col = 3;
 
     const row = colCount[col] + 1;
     colCount[col]++;
 
     const e = createBattleEnemy(templateId, col, row, stars, level);
-    if (e) enemies.push(e);
+    if (e) units.push(e);
   });
+
+  return units;
+}
+
+/** Сила группы после синергий (копии юнитов, основной бой не трогаем). */
+function estimateEncounterPowerAfterSynergies(encounter, stars, level) {
+  const raw = buildEncounterPlacedUnits(encounter, stars, level);
+  const probe = raw.map(u => ({ ...u, stats: { ...u.stats } }));
+  applyEnemySynergies(probe);
+  return calculateGroupPower(probe);
+}
+
+function pickEncounterForLocation(location, stars, level) {
+  const list = location.encounters;
+  if (!list || !list.length) return null;
+
+  const tp = location.targetPower;
+  if (!tp || !Array.isArray(tp) || tp.length !== 2) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  const [minP, maxP] = tp;
+  const scored = list.map(enc => ({
+    enc,
+    power: estimateEncounterPowerAfterSynergies(enc, stars, level),
+  }));
+
+  const inRange = scored.filter(x => x.power >= minP && x.power <= maxP);
+
+  const distToBand = p => {
+    if (p < minP) return minP - p;
+    if (p > maxP) return p - maxP;
+    return 0;
+  };
+
+  let chosen;
+  if (inRange.length) {
+    chosen = inRange[Math.floor(Math.random() * inRange.length)];
+  } else {
+    const bestD = Math.min(...scored.map(x => distToBand(x.power)));
+    const ties = scored.filter(x => distToBand(x.power) === bestD);
+    chosen = ties[Math.floor(Math.random() * ties.length)];
+  }
+
+  console.log('[ENCOUNTER PICK]', {
+    location: location.id,
+    chosen: chosen.enc.id,
+    power: chosen.power,
+    target: location.targetPower,
+    pickMode: inRange.length ? 'in_range' : 'nearest',
+    rejected: scored
+      .filter(x => x.enc.id !== chosen.enc.id)
+      .map(x => ({ id: x.enc.id, power: x.power })),
+  });
+
+  return chosen.enc;
+}
+
+// ── Enemy party synergies (applied once after spawn, by role) ───
+function applyEnemySynergies(units) {
+  if (!units || !units.length) return;
+
+  const byRole = {};
+  units.forEach(u => {
+    if (!byRole[u.role]) byRole[u.role] = [];
+    byRole[u.role].push(u);
+  });
+
+  // 1. SWARM
+  if (byRole.swarm && byRole.swarm.length > 1) {
+    byRole.swarm.forEach(u => {
+      u.stats.meleeAtk += byRole.swarm.length - 1;
+    });
+  }
+
+  // 2. TANK + BRUISER
+  if (byRole.tank && byRole.bruiser) {
+    byRole.bruiser.forEach(u => {
+      u.stats.meleeAtk *= 1.2;
+    });
+  }
+
+  // 3. CONTROL
+  if (byRole.control) {
+    units.forEach(u => {
+      u.stats.initiative *= 1.1;
+    });
+  }
+
+  // 4. BOSS
+  if (byRole.boss) {
+    units.forEach(u => {
+      u.stats.meleeAtk *= 1.15;
+      if (u.stats.rangeAtk) u.stats.rangeAtk *= 1.15;
+      if (u.stats.magic) u.stats.magic *= 1.15;
+    });
+  }
+}
+
+// Обучающая кривая зоны 1: метки для лога [EARLY BALANCE]
+const EARLY_BALANCE_NOTE_BY_LOC = {
+  loc_1: 'training',
+  loc_2: 'challenge',
+  loc_3a: 'test',
+  loc_3b: 'test',
+};
+
+// ── Generate enemies from a location definition ──────────────────
+function generateLocationEnemies(location) {
+  const zone    = location.zone || 1;
+  const stars   = Math.min(Math.max(zone - 1, 1), 5);
+  const level   = Math.max(1, (zone - 1) * 2);
+
+  let enemies = [];
+  let chosenEncounter = null;
+
+  if (location.encounters && location.encounters.length) {
+    chosenEncounter = pickEncounterForLocation(location, stars, level);
+    enemies = buildEncounterPlacedUnits(chosenEncounter, stars, level);
+  } else {
+    const pool    = location.enemies || [];
+    const [minC, maxC] = location.enemyCount || [1, 2];
+    const count   = minC + Math.floor(Math.random() * (maxC - minC + 1));
+
+    // Track how many are placed in each column
+    const colCount = { 1: 0, 2: 0, 3: 0 };
+
+    // For boss locations, put first enemy (the boss) at col 1
+    const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
+
+    templateIds.forEach(templateId => {
+      const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
+      if (!tmpl) return;
+
+      // Pick column based on template's attackType / class
+      let col = 1;
+      const at = tmpl.attackType || 'melee';
+      if (at === 'ranged')     col = 2;
+      else if (at === 'magic') col = 3;
+
+      const row = colCount[col] + 1;
+      colCount[col]++;
+
+      const e = createBattleEnemy(templateId, col, row, stars, level);
+      if (e) enemies.push(e);
+    });
+  }
+
+  applyEnemySynergies(enemies);
+
+  const totalPower = calculateGroupPower(enemies);
+
+  const earlyNote = EARLY_BALANCE_NOTE_BY_LOC[location.id];
+  if (earlyNote && chosenEncounter) {
+    console.log('[EARLY BALANCE]', {
+      location: location.id,
+      encounter: chosenEncounter.id,
+      enemyPower: totalPower,
+      note: earlyNote,
+    });
+  }
+
+  console.log('[ENEMY POWER V2]', {
+    location: location.id,
+    enemies: enemies.map(e => e.id),
+    unitCount: enemies.length,
+    power: totalPower,
+  });
+  console.log('[UNIT POWER]', enemies.map(u => ({
+    id: u.id,
+    power: calculateUnitPower(u),
+  })));
 
   return enemies;
 }

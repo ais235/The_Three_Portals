@@ -34,22 +34,64 @@ const AI = (() => {
     return enemySide.filter(t => t.isAlive && availCols.includes(t.column));
   }
 
-  // Choose target based on AI strategy
+  function pickAggressiveLowestHp(valid) {
+    return valid.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
+  }
+
+  function pickFrontPressure(valid) {
+    const minCol = Math.min(...valid.map(t => t.column));
+    const frontLine = valid.filter(t => t.column === minCol);
+    return frontLine.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
+  }
+
+  function pickFocusBackline(valid) {
+    const maxCol = Math.max(...valid.map(t => t.column));
+    const backLine = valid.filter(t => t.column === maxCol);
+    return backLine.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
+  }
+
+  /** Маги и лучники с угрозой >= порога; иначе тот же пул, что aggressive (lowest hp). */
+  const DISABLE_THREAT_MIN = 8;
+
+  function pickDisablePriority(valid) {
+    const high = valid.filter(t =>
+      (t.stats.magic || 0) >= DISABLE_THREAT_MIN ||
+      (t.stats.rangeAtk || 0) >= DISABLE_THREAT_MIN);
+    const pool = high.length ? high : valid;
+    return pickAggressiveLowestHp(pool);
+  }
+
+  // Choose target: aiPattern (новое) → иначе legacy `ai`
   function chooseTarget(attacker, targets) {
-    const strategy = attacker.ai || 'attack_lowest_hp';
     const valid = getValidTargets(attacker, targets);
     if (!valid.length) return null;
 
+    const pattern = attacker.aiPattern;
+    if (pattern) {
+      switch (pattern) {
+        case 'aggressive':
+          return pickAggressiveLowestHp(valid);
+        case 'front_pressure':
+          return pickFrontPressure(valid);
+        case 'focus_backline':
+          return pickFocusBackline(valid);
+        case 'sniper':
+          return pickAggressiveLowestHp(valid);
+        case 'random':
+          return valid[Math.floor(Math.random() * valid.length)];
+        case 'disable_priority':
+          return pickDisablePriority(valid);
+        default:
+          break;
+      }
+    }
+
+    const strategy = attacker.ai || 'attack_lowest_hp';
     switch (strategy) {
       case 'attack_lowest_hp':
-        return valid.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
-
-      case 'attack_front_first': {
-        const minCol = Math.min(...valid.map(t => t.column));
-        const frontLine = valid.filter(t => t.column === minCol);
-        return frontLine.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
-      }
-
+        return pickAggressiveLowestHp(valid);
+      case 'attack_front_first':
+        return pickFrontPressure(valid);
       default:
         return valid[Math.floor(Math.random() * valid.length)];
     }

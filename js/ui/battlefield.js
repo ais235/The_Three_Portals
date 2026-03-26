@@ -4,6 +4,69 @@
 
 const BattlefieldUI = (() => {
 
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function describeSpellTarget(t) {
+    const map = {
+      single: 'один враг',
+      single_enemy: 'один враг',
+      single_ally: 'один союзник',
+      all_enemies: 'все враги',
+      all_allies: 'все союзники',
+      lowest_hp_ally: 'союзник с мин. HP',
+      random_3: 'до 3 врагов (случайно)',
+    };
+    return map[t] || t || '—';
+  }
+
+  function describeSpellArea(area) {
+    if (!area || !area.shape || area.shape === 'single') return '';
+    const who = area.scope === 'ally' ? 'союзники' : 'враги';
+    switch (area.shape) {
+      case 'row': return `Область: весь ряд (${who})`;
+      case 'column':
+      case 'col': return `Область: вся колонка (${who})`;
+      case 'cross': return `Область: крест — ряд и колонка (${who})`;
+      case 'line': return `Область: обе диагонали через клетку (${who})`;
+      default: return '';
+    }
+  }
+
+  function spellPickerTooltipHtml(unit, sp) {
+    const lines = [];
+    lines.push(`<div class="bst-title">${escapeHtml(sp.name)}</div>`);
+    const bodyBits = [];
+    if (sp.desc) bodyBits.push(escapeHtml(sp.desc));
+    if (sp.cost != null) {
+      const ok = unit && (unit.stats.mana || 0) >= sp.cost;
+      bodyBits.push(escapeHtml(ok ? `Мана: ${sp.cost}` : `Мана: ${sp.cost} (не хватает)`));
+    }
+    bodyBits.push(`Цель: ${escapeHtml(describeSpellTarget(sp.target))}`);
+    const ar = describeSpellArea(sp.area);
+    if (ar) bodyBits.push(escapeHtml(ar));
+    if (sp.damage) bodyBits.push(`Урон: ${sp.damage.min}–${sp.damage.max}`);
+    if (sp.heal) bodyBits.push(`Лечение: ${sp.heal.min}–${sp.heal.max}`);
+    if (sp.effect) bodyBits.push(`Эффект: ${escapeHtml(Battle.effectPreviewLabel(sp.effect))}`);
+    lines.push(`<div class="bst-body">${bodyBits.join('<br>')}</div>`);
+    if (unit) lines.push(`<div class="bst-meta">${escapeHtml(unit.name)}</div>`);
+    return lines.join('');
+  }
+
+  function showSpellPickerTooltip(ev, unit, sp) {
+    const el = document.getElementById('battle-skill-tooltip');
+    if (!el) return;
+    el.innerHTML = spellPickerTooltipHtml(unit, sp);
+    el.hidden = false;
+    moveAbilityTooltip(ev);
+  }
+
   const CLASS_COLORS = {
     tank:        '#185FA5',
     spearman:    '#534AB7',
@@ -44,6 +107,16 @@ const BattlefieldUI = (() => {
   function clearField() {
     document.querySelectorAll('#allies-grid .bf-cell, #enemies-grid .bf-cell').forEach(cell => {
       cell.querySelectorAll('.unit-card').forEach(c => c.remove());
+      cell.classList.remove('spell-area-preview');
+    });
+  }
+
+  function clearSpellHoverHighlights() {
+    document.querySelectorAll('.bf-cell.spell-area-preview').forEach(c => c.classList.remove('spell-area-preview'));
+    document.querySelectorAll('.unit-card.preview-dmg, .unit-card.preview-dmg-heal, .unit-card.preview-spell').forEach(c => {
+      c.classList.remove('preview-dmg', 'preview-dmg-heal', 'preview-spell');
+      const p = c.querySelector('.bf-dmg-preview');
+      if (p) p.textContent = '';
     });
   }
 
@@ -121,7 +194,7 @@ const BattlefieldUI = (() => {
       const attacker = bs.pendingAction.attacker;
       if (!attacker) return;
       const est = Battle.estimateAttackDamage(attacker, unit);
-      card.classList.remove('preview-dmg-heal');
+      card.classList.remove('preview-dmg-heal', 'preview-spell');
       if (!est || est.unreachable) {
         prev.textContent = 'Нет досягаемости';
         card.classList.add('preview-dmg');
@@ -132,14 +205,43 @@ const BattlefieldUI = (() => {
       return;
     }
 
-    if (bs.pendingAction.type === 'spell') {
-      // Резерв под выбор цели заклинанием / AoE
-      clearTargetPreview(card);
+    if (bs.pendingAction.type === 'spell' && bs.pendingAction.spell) {
+      const spell = bs.pendingAction.spell;
+      const attacker = bs.pendingAction.attacker;
+      if (!attacker || !unit.isAlive) return;
+
+      clearSpellHoverHighlights();
+
+      const sideNeed = getSpellTargetSide(spell);
+      if (sideNeed && unit.side !== sideNeed) return;
+
+      const targets = Battle.getSpellPreviewTargets(attacker, spell, unit);
+      if (!targets.length) return;
+
+      const kind = spell.damage ? 'dmg' : (spell.heal ? 'heal' : 'fx');
+
+      targets.forEach(t => {
+        const cell = gridCellEl(t.side, t.row, t.column);
+        if (cell) cell.classList.add('spell-area-preview');
+        const tcard = document.querySelector(`.unit-card[data-instance-id="${t.instanceId}"]`);
+        if (!tcard) return;
+        const line = Battle.formatSpellPreviewLine(attacker, spell, unit, t);
+        const p = tcard.querySelector('.bf-dmg-preview');
+        if (p) p.textContent = line;
+        tcard.classList.remove('preview-dmg', 'preview-dmg-heal', 'preview-spell');
+        if (kind === 'dmg') tcard.classList.add('preview-dmg');
+        else if (kind === 'heal') tcard.classList.add('preview-dmg-heal');
+        else tcard.classList.add('preview-spell');
+      });
     }
   }
 
   function clearTargetPreview(card) {
-    card.classList.remove('preview-dmg', 'preview-dmg-heal');
+    card.classList.remove('preview-dmg', 'preview-dmg-heal', 'preview-spell');
+    const bs = Battle.getState();
+    if (bs?.pendingAction?.type === 'spell' && bs.pendingAction.spell) {
+      clearSpellHoverHighlights();
+    }
   }
 
   function handleCardClick(unit) {
@@ -316,6 +418,7 @@ const BattlefieldUI = (() => {
 
   function requestTarget(type, payload) {
     if (type === 'clear') {
+      clearSpellHoverHighlights();
       markTargetable(false, 'enemy');
       markTargetable(false, 'ally');
       return;
@@ -405,15 +508,18 @@ const BattlefieldUI = (() => {
 
     const activeId = pa.type === 'spell' && pa.spell ? pa.spell.id : null;
 
-    picker.innerHTML = `
-      ${spells.map(sp => `
-        <button type="button" class="spell-btn ${sp.id === activeId ? 'active' : ''}"
-          onclick="Battle.chooseSpell('${sp.id}')"
-          title="${sp.desc || sp.name}">
-          ✨ ${sp.name}
-        </button>
-      `).join('')}
-    `;
+    picker.textContent = '';
+    spells.forEach(sp => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `spell-btn ${sp.id === activeId ? 'active' : ''}`;
+      btn.textContent = `✨ ${sp.name}`;
+      btn.addEventListener('click', () => Battle.chooseSpell(sp.id));
+      btn.addEventListener('mouseenter', ev => showSpellPickerTooltip(ev, currentUnit, sp));
+      btn.addEventListener('mousemove', moveAbilityTooltip);
+      btn.addEventListener('mouseleave', hideAbilityTooltip);
+      picker.appendChild(btn);
+    });
     picker.classList.remove('hidden');
   }
 

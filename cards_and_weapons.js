@@ -615,9 +615,13 @@ const ALLIES = [
     starRange: [1, 3], icon: '🌪️',
     base: { hp:38, meleeAtk:4, meleeDef:3, magic:15, magicDef:8, mana:65, manaRegen:22, initiative:10 },
     spells: [
-      { id:'gust',         name:'Порыв ветра',   cost:18, target:'single',      effect:'initiative_down_4' },
-      { id:'tornado',      name:'Торнадо',       cost:40, target:'single',      damage:{min:18,max:25}, effect:'stun_1', unlockedAt:2 },
-      { id:'wind_wall',    name:'Стена ветра',   cost:50, target:'passive_3turns', effect:'ranged_dmg_reduce_40pct', unlockedAt:3 },
+      { id:'gust',         name:'Порыв ветра',   cost:18, target:'single_enemy', effect:'initiative_down_4',
+        desc:'Снижает инициативу выбранного врага.' },
+      { id:'tornado',      name:'Торнадо',       cost:40, target:'single_enemy', damage:{min:18,max:25}, effect:'stun_1', unlockedAt:2,
+        area: { shape:'cross', scope:'enemy' },
+        desc:'Магический урон и оглушение по кресту (ряд + колонка) вокруг клетки цели.' },
+      { id:'wind_wall',    name:'Стена ветра',   cost:50, target:'all_allies', effect:'ranged_dmg_reduce_40pct', unlockedAt:3,
+        desc:'Все живые союзники получают защиту от дальнего боя на 3 хода.' },
     ],
     abilities: [
       { id:'wind_step',    name:'Шаг ветра',     unlockedAt:1, type:'passive', desc:'Самая высокая инициатива в игре (база 10).' },

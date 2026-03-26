@@ -20,7 +20,8 @@ const SquadSelect = (() => {
     currentLoc  = location;
     // Restore last squad, filtering out cards that no longer pass constraints
     const last = GameState.getLastSquad ? GameState.getLastSquad() : [];
-    selectedIds = last.filter(id => _cardPassesConstraint(id));
+    const uniqLast = [...new Set(last)];
+    selectedIds = uniqLast.filter(id => _cardPassesConstraint(id));
     // Trim if over limit
     while (selectedIds.length > currentLoc.maxUnits) selectedIds.pop();
 
@@ -49,21 +50,47 @@ const SquadSelect = (() => {
     const h = document.getElementById('ss-loc-name');
     if (h) h.textContent = currentLoc.name;
 
+    const squadPower = _calculateSelectedSquadPower();
     const c = document.getElementById('ss-constraints');
     if (c) c.innerHTML = `
       <span class="ss-constraint">Макс. звёзд: ${'★'.repeat(currentLoc.maxStars)}</span>
       <span class="ss-constraint">Макс. юнитов: ${currentLoc.maxUnits}</span>
       <span class="ss-constraint" id="ss-count-badge">${selectedIds.length}/${currentLoc.maxUnits} выбрано</span>
+      <span class="ss-constraint" id="ss-power-badge">⚔ Уровень силы отряда: ${squadPower}</span>
     `;
+  }
+
+  function _calculateSelectedSquadPower() {
+    if (!selectedIds.length) return 0;
+
+    const colRow = { 1: 1, 2: 1, 3: 1 };
+    const units = [];
+
+    selectedIds.forEach(allyId => {
+      const ally = ALLIES.find(a => a.id === allyId);
+      if (!ally) return;
+      const col = CLASS_COL[ally.class] || 1;
+      const row = colRow[col]++;
+      const unit = createBattleAlly(allyId, col, row);
+      if (unit) units.push(unit);
+    });
+
+    if (typeof calculateGroupPower === 'function') {
+      return calculateGroupPower(units);
+    }
+    if (typeof calculateUnitPower === 'function') {
+      return units.reduce((acc, u) => acc + calculateUnitPower(u), 0);
+    }
+    return 0;
   }
 
   function _renderCardPool() {
     const pool = document.getElementById('ss-card-pool');
     if (!pool) return;
 
-    const unlocked = GameState.getUnlocked();
-    const eligible = unlocked.filter(id => _cardPassesConstraint(id));
-    const ineligible = unlocked.filter(id => !_cardPassesConstraint(id));
+    const unlockedIds = GameState.getUniqueUnlockedIds ? GameState.getUniqueUnlockedIds() : [...new Set(GameState.getUnlocked())];
+    const eligible = unlockedIds.filter(id => _cardPassesConstraint(id));
+    const ineligible = unlockedIds.filter(id => !_cardPassesConstraint(id));
 
     let html = '';
 
@@ -88,6 +115,7 @@ const SquadSelect = (() => {
     const ally = ALLIES.find(a => a.id === allyId);
     if (!ally) return '';
     const lvl  = GameState.getCardLevel(allyId) || { stars: 1, powerLevel: 1 };
+    const cop  = GameState.getCardCopyCount(allyId);
     const sel  = selectedIds.includes(allyId);
     const cls  = ally.class || 'damage';
     const col  = CLASS_COL[cls] || 1;
@@ -108,6 +136,7 @@ const SquadSelect = (() => {
         <div class="ss-thumb-meta">
           <span class="ss-thumb-stars">${'★'.repeat(lvl.stars)}</span>
           <span class="ss-thumb-col">${colIcon}</span>
+          ${cop > 1 ? `<span class="ss-thumb-copies" title="Копий в коллекции">×${cop}</span>` : ''}
         </div>
         ${sel ? '<div class="ss-thumb-check">✓</div>' : ''}
         ${disabled ? `<div class="ss-thumb-lock">★${lvl.stars}≤${currentLoc.maxStars}?</div>` : ''}
@@ -156,6 +185,10 @@ const SquadSelect = (() => {
       selectedIds.splice(idx, 1);
     } else {
       // Add if under limit
+      if (selectedIds.includes(allyId)) {
+        _showToast('В бой можно взять только одну копию каждого героя', 'error');
+        return;
+      }
       if (selectedIds.length >= currentLoc.maxUnits) {
         _showToast(`Максимум ${currentLoc.maxUnits} юнитов!`, 'error');
         return;
@@ -182,7 +215,7 @@ const SquadSelect = (() => {
 
     // Save squad
     if (typeof GameState.setLastSquad === 'function') {
-      GameState.setLastSquad(selectedIds);
+      GameState.setLastSquad([...new Set(selectedIds)]);
     }
 
     // Build ally units – assign rows within each column

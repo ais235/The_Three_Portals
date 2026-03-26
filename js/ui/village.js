@@ -275,8 +275,8 @@ const VillageUI = (() => {
     } else {
       const ally = result.ally;
       inner = UnitCard.buildMiniCard(ally, { showLocked: false });
-      title = result.isNew ? '✦ Новый герой!' : '↺ Уже есть в казарме';
-      sub   = result.isNew ? ally.name : `+1 пыль ★${result.stars} добавлена`;
+      title = result.isNew ? '✦ Новый герой!' : '↺ Ещё одна копия';
+      sub   = result.isNew ? ally.name : `В коллекции ×${result.copyCount ?? GameState.getCardCopyCount(ally.id)} — дубликаты сохраняются`;
     }
 
     document.getElementById('portal-result-inner').innerHTML = inner;
@@ -372,7 +372,7 @@ const VillageUI = (() => {
           Переработать карту в<br>
           <span class="dust-chip star-${stars}">1 пыль ★${stars}</span>?
         </p>
-        <p style="color:#f66;font-size:0.82rem;margin-bottom:20px;">Карта будет удалена из коллекции.</p>
+        <p style="color:#f66;font-size:0.82rem;margin-bottom:20px;">Будет переработана одна копия (остальные сохранятся).</p>
         <div style="display:flex;gap:12px;justify-content:center;">
           <button class="result-btn danger" onclick="VillageUI.doRecycle('${id}')">🔄 Переработать</button>
           <button class="result-btn" onclick="App.forceCloseModal()">Отмена</button>

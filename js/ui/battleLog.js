@@ -4,7 +4,6 @@
 
 const BattleLog = (() => {
 
-  const MAX_ENTRIES = 80;
   let entries = [];
 
   function init() {
@@ -15,7 +14,6 @@ const BattleLog = (() => {
 
   function addEntry({ type, text }) {
     entries.push({ type, text });
-    if (entries.length > MAX_ENTRIES) entries.shift();
 
     const log = document.getElementById('battle-log');
     if (!log) return;
@@ -63,5 +61,9 @@ const BattleLog = (() => {
       .replace(/>/g,'&gt;');
   }
 
-  return { init, addEntry };
+  function getPlainText() {
+    return entries.map(e => e.text).join('\n');
+  }
+
+  return { init, addEntry, getPlainText };
 })();

@@ -81,6 +81,58 @@ const WorldMap = {
     svg.innerHTML = `<path class="zone-route-path" d="${d}" fill="none" />`;
   },
 
+  _estimateLocationEnemyPowerRange(loc) {
+    const zone = loc.zone || 1;
+    const stars = Math.min(Math.max(zone - 1, 1), 5);
+    const level = Math.max(1, (zone - 1) * 2);
+
+    const calcGroup = (templateIds) => {
+      const units = [];
+      const colCount = { 1: 0, 2: 0, 3: 0 };
+
+      (templateIds || []).forEach(templateId => {
+        const tmpl = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[templateId] : null;
+        if (!tmpl || typeof createBattleEnemy !== 'function') return;
+
+        let col = 1;
+        const at = tmpl.attackType || 'melee';
+        if (at === 'ranged') col = 2;
+        else if (at === 'magic') col = 3;
+
+        const row = colCount[col] + 1;
+        colCount[col]++;
+        const e = createBattleEnemy(templateId, col, row, stars, level);
+        if (e) units.push(e);
+      });
+
+      if (typeof applyEnemySynergies === 'function') applyEnemySynergies(units);
+      if (typeof calculateGroupPower === 'function') return calculateGroupPower(units);
+      if (typeof calculateUnitPower === 'function') {
+        return units.reduce((sum, u) => sum + calculateUnitPower(u), 0);
+      }
+      return 0;
+    };
+
+    const powers = [];
+
+    if (Array.isArray(loc.encounters) && loc.encounters.length) {
+      loc.encounters.forEach(enc => {
+        powers.push(calcGroup(enc.enemies || []));
+      });
+    } else {
+      const pool = Array.isArray(loc.enemies) ? loc.enemies : [];
+      const countMin = Array.isArray(loc.enemyCount) ? loc.enemyCount[0] : 1;
+      const countMax = Array.isArray(loc.enemyCount) ? loc.enemyCount[1] : countMin;
+      for (let count = countMin; count <= countMax; count++) {
+        const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
+        powers.push(calcGroup(templateIds));
+      }
+    }
+
+    if (!powers.length) return null;
+    return { min: Math.min(...powers), max: Math.max(...powers) };
+  },
+
   /** Смена фона с плавным появлением (кнопки ‹ › между зонами). */
   _applyZoneBackground(nextSrc) {
     const bg = document.getElementById('zone-bg');
@@ -237,6 +289,10 @@ const WorldMap = {
     const enemyCountStr = Array.isArray(loc.enemyCount)
       ? `${loc.enemyCount[0]}–${loc.enemyCount[1]}`
       : (loc.enemyCount || '?');
+    const enemyPowerRange = this._estimateLocationEnemyPowerRange(loc);
+    const enemyPowerStr = enemyPowerRange
+      ? `${enemyPowerRange.min}–${enemyPowerRange.max}`
+      : '?';
 
     const enemyChipsHtml = (loc.enemies || []).map(eId => {
       const t = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[eId] : null;
@@ -309,6 +365,7 @@ const WorldMap = {
           <section class="lp-block lp-block--enemies">
             <h3 class="lp-block-title">Противники</h3>
             <div class="lp-enemies">${enemyChipsHtml || '<span class="lp-empty">—</span>'}</div>
+            <div class="lp-enemy-power">Уровень силы ~ ${enemyPowerStr}</div>
           </section>
           <section class="lp-block lp-block--rewards">
             <h3 class="lp-block-title">Награды</h3>

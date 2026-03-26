@@ -5,7 +5,7 @@
 
 const BarracksUI = (() => {
 
-  let currentFilters = { race: '', class: '', stars: '', locked: 'all' };
+  let currentFilters = { race: '', class: '', stars: '', locked: 'unlocked' };
 
   // ── Init ───────────────────────────────────────────────────────
 
@@ -42,6 +42,7 @@ const BarracksUI = (() => {
         <option value="unlocked">✅ Открытые</option>
         <option value="locked">🔒 Закрытые</option>
       `;
+      lockedSelect.value = 'unlocked';
     }
   }
 
