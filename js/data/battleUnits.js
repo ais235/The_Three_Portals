@@ -74,7 +74,7 @@ const T_LUCHNIK = {
   base: { hp:45, meleeAtk:5, meleeDef:5, rangeAtk:14, rangeDef:4, magicDef:4, initiative:6 },
   attackType: 'ranged',
   attackColumns: [1, 2],
-  rangeModifiers: { 1:1.0, 2:0.75, 3:null },
+  rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
   attackMode: { shots: 2 },
   abilities: [
     { id:'double_shot',  name:'Двойной выстрел', type:'passive', unlockedAt:1,
@@ -338,14 +338,12 @@ function buildEncounterPlacedUnits(encounter, stars, level) {
     const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
     if (!tmpl) return;
 
-    let col = 1;
     const at = tmpl.attackType || 'melee';
-    if (at === 'ranged') col = 2;
-    else if (at === 'magic') col = 3;
+    const col = at === 'ranged' ? 2 : (at === 'magic' ? 3 : 1);
+    if ((colCount[col] || 0) >= 3) return; // strict line limit: 3 units per column
 
-    const row = colCount[col] + 1;
-    colCount[col]++;
-
+    const row = (colCount[col] || 0) + 1;
+    colCount[col] = row;
     const e = createBattleEnemy(templateId, col, row, stars, level);
     if (e) units.push(e);
   });
@@ -359,6 +357,172 @@ function estimateEncounterPowerAfterSynergies(encounter, stars, level) {
   const probe = raw.map(u => ({ ...u, stats: { ...u.stats } }));
   applyEnemySynergies(probe);
   return calculateGroupPower(probe);
+}
+
+// ── Analytics: real enemy power by encounter combinations (no scaling) ────
+function getLocationStarsAndLevel(location) {
+  const zone = location?.zone ?? 1;
+  const stars = Math.min(Math.max(zone - 1, 1), 5);
+  const level = Math.max(1, (zone - 1) * 2);
+  return { stars, level };
+}
+
+function analyzeRealEnemyPowerForLocation(location) {
+  const encounters = Array.isArray(location?.encounters) ? location.encounters : [];
+  const { stars, level } = getLocationStarsAndLevel(location);
+
+  // If no encounters have explicit `weight` → treat all as equally likely.
+  // Otherwise use provided weights; encounters without `weight` default to `1`.
+  const hasAnyWeight = encounters.some(enc => typeof enc?.weight === 'number' && Number.isFinite(enc.weight));
+  const rawWeights = encounters.map(enc => {
+    if (!hasAnyWeight) return 1;
+    const w = (typeof enc?.weight === 'number' && Number.isFinite(enc.weight)) ? enc.weight : 1;
+    return Math.max(0, w);
+  });
+
+  const sumW = rawWeights.reduce((a, b) => a + b, 0);
+  const chances = encounters.map((_, i) => {
+    if (!encounters.length) return 0;
+    if (!sumW || sumW <= 0) return 1 / encounters.length;
+    return rawWeights[i] / sumW;
+  });
+
+  const scored = encounters.map((enc, i) => {
+    const power = estimateEncounterPowerAfterSynergies(enc, stars, level);
+    return { id: enc?.id, power, chance: chances[i] };
+  });
+
+  const powers = scored.map(x => x.power);
+  const min = powers.length ? Math.min(...powers) : 0;
+  const max = powers.length ? Math.max(...powers) : 0;
+  const avg = scored.reduce((acc, x) => acc + (x.power * x.chance), 0);
+
+  return {
+    location: location?.id,
+    encounters: scored.map(x => ({ id: x.id, power: x.power, chance: x.chance })),
+    enemies: { min, avg, max },
+  };
+}
+
+function analyzePlayerPowerRange(location) {
+  const maxUnits = location?.maxUnits ?? 1;
+  const maxStars = location?.maxStars ?? 1;
+
+  // MIN composition: weakest available cards at ★1, lvl1.
+  const eligibleMin = ALLIES.filter(a => {
+    const sr = a.starRange || [1, 1];
+    return sr[0] <= 1 && 1 <= sr[1];
+  });
+  const minUnits = eligibleMin
+    .map(a => createAllyForPowerSim(a.id, 1, 1))
+    .filter(Boolean)
+    .map(u => ({ u, p: calculateUnitPower(u) }))
+    .sort((a, b) => a.p - b.p)
+    .slice(0, Math.min(maxUnits, eligibleMin.length))
+    .map(x => x.u);
+
+  const min = minUnits.length ? calculateGroupPower(minUnits) : 0;
+
+  // MAX composition: strongest eligible cards at stars=maxStars, level=stars*10.
+  const levelMax = maxStars * 10;
+  const eligibleMax = ALLIES.filter(a => {
+    const sr = a.starRange || [1, 1];
+    return sr[0] <= maxStars && maxStars <= sr[1];
+  });
+  const maxUnitsList = eligibleMax
+    .map(a => createAllyForPowerSim(a.id, maxStars, levelMax))
+    .filter(Boolean)
+    .map(u => ({ u, p: calculateUnitPower(u) }))
+    .sort((a, b) => b.p - a.p)
+    .slice(0, Math.min(maxUnits, eligibleMax.length))
+    .map(x => x.u);
+
+  const max = maxUnitsList.length ? calculateGroupPower(maxUnitsList) : 0;
+  const avg = (min + max) / 2;
+
+  return { min, avg, max };
+}
+
+function evaluateDifficulty(playerRange, enemiesRange) {
+  const p = playerRange || { min: 0, avg: 0, max: 0 };
+  const e = enemiesRange || { min: 0, avg: 0, max: 0 };
+
+  if (e.max > p.max * 1.3) return 'spike';
+  if (p.min > e.max) return 'easy';
+  if (p.max < e.min) return 'hard';
+
+  const within20 = (p.avg > 0)
+    ? (Math.abs(e.avg - p.avg) / p.avg) <= 0.20
+    : (Math.abs(e.avg - p.avg) <= 0.20);
+  if (within20) return 'normal';
+
+  // Fallback: decide by average comparison.
+  return (e.avg > p.avg) ? 'hard' : 'easy';
+}
+
+function estimateWinRate(playerRange, encounters) {
+  const pAvg = playerRange?.avg ?? 0;
+  const list = Array.isArray(encounters) ? encounters : [];
+  if (!list.length) return 0;
+
+  let win = 0;
+  for (const enc of list) {
+    const chance = enc?.chance ?? 0;
+    const power = enc?.power ?? 0;
+    if (pAvg >= power) win += chance;
+  }
+  return Math.max(0, Math.min(1, win));
+}
+
+function suggestFixes(locationAnalysis) {
+  const verdict = locationAnalysis?.verdict;
+  const suggestions = [];
+
+  if (verdict === 'easy') {
+    suggestions.push('Увеличить weight сильных encounter’ов.');
+    suggestions.push('Или добавить +1 юнит врагам (увеличить состав encounter / maxUnits).');
+  } else if (verdict === 'hard') {
+    suggestions.push('Уменьшить weight сильных encounter’ов.');
+    suggestions.push('Или убрать один юнит из сильных encounter’ов.');
+    suggestions.push('Или ослабить base статы врагов (если это допустимо дизайном).');
+  } else if (verdict === 'spike') {
+    suggestions.push('Снизить max power у пиковых encounter’ов (состав/юниты/роли).');
+    suggestions.push('Или уменьшить количество врагов в самых сильных encounter’ах.');
+  }
+
+  return suggestions;
+}
+
+function runFullBalanceAnalysis() {
+  if (typeof LOCATIONS === 'undefined' || !Array.isArray(LOCATIONS)) return;
+  if (typeof ALLIES === 'undefined' || !Array.isArray(ALLIES)) return;
+
+  for (const location of LOCATIONS) {
+    const player = analyzePlayerPowerRange(location);
+    const enemyAnalysis = analyzeRealEnemyPowerForLocation(location);
+    const enemies = enemyAnalysis.enemies;
+    const verdict = evaluateDifficulty(player, enemies);
+    const winRate = estimateWinRate(player, enemyAnalysis.encounters);
+    const suggestions = suggestFixes({ verdict, player, enemies });
+
+    console.log('[BALANCE REPORT]', {
+      location: location.id,
+      player: {
+        min: player.min,
+        avg: Math.round(player.avg * 100) / 100,
+        max: player.max,
+      },
+      enemies: {
+        min: enemies.min,
+        avg: Math.round(enemies.avg * 100) / 100,
+        max: enemies.max,
+      },
+      verdict,
+      winChanceEstimate: Math.round(winRate * 1000) / 10,
+      winRate: Math.round(winRate * 1000) / 10,
+      suggestions,
+    });
+  }
 }
 
 function pickEncounterForLocation(location, stars, level) {
@@ -669,15 +833,12 @@ function generateLocationEnemies(location, playerUnits = null) {
       const tmpl = ENEMY_TEMPLATES && ENEMY_TEMPLATES[templateId];
       if (!tmpl) return;
 
-      // Pick column based on template's attackType / class
-      let col = 1;
       const at = tmpl.attackType || 'melee';
-      if (at === 'ranged') col = 2;
-      else if (at === 'magic') col = 3;
+      const col = at === 'ranged' ? 2 : (at === 'magic' ? 3 : 1);
+      if ((colCount[col] || 0) >= 3) return; // strict line limit: 3 units per column
 
-      const row = colCount[col] + 1;
-      colCount[col]++;
-
+      const row = (colCount[col] || 0) + 1;
+      colCount[col] = row;
       const e = createBattleEnemy(templateId, col, row, stars, level);
       if (e) enemies.push(e);
     });
@@ -745,4 +906,11 @@ try {
   buildBalanceTableForAllLocations();
 } catch (e) {
   // If balancing simulation fails, the game can still proceed with existing targetPower.
+}
+
+// Optional debug analytics: real enemy power without scaling/targetPower.
+try {
+  runFullBalanceAnalysis();
+} catch (e) {
+  // Never break gameplay if analytics fails.
 }

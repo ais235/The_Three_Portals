@@ -112,7 +112,7 @@ const ALLIES = [
     id: 'luchnik', name: 'Лучник', race: 'human', class: 'archer',
     starRange: [1, 2], icon: '🏹',
     attackMode: { shots:2 },
-    rangeModifiers: { 1:1.0, 2:0.75, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     base: { hp:45, meleeAtk:5, meleeDef:5, rangeAtk:14, rangeDef:4, magicDef:4, initiative:6 },
     abilities: [
       { id:'double_shot',   name:'Двойной выстрел', unlockedAt:1, type:'passive', desc:'2 выстрела за ход, каждый в разную цель.' },
@@ -143,7 +143,7 @@ const ALLIES = [
     id: 'forest_elf', name: 'Лесной эльф', race: 'elf', class: 'archer',
     starRange: [2, 4], icon: '🧝',
     attackMode: { shots:2 },
-    rangeModifiers: { 1:1.0, 2:0.75, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     base: { hp:50, meleeAtk:6, meleeDef:6, rangeAtk:16, rangeDef:5, magicDef:6, initiative:8 },
     abilities: [
       { id:'forest_sense', name:'Лесное чутьё',   unlockedAt:2, type:'passive', desc:'+20% уклонение в первые 2 хода боя.' },
@@ -344,7 +344,7 @@ const ALLIES = [
     id: 'goblin_archer', name: 'Гоблин-лучник', race: 'goblin', class: 'archer',
     starRange: [1, 3], icon: '🏹',
     attackMode: { shots:3 }, // три выстрела — особенность
-    rangeModifiers: { 1:1.0, 2:0.6, 3:null }, // слабее лучника по точности
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     base: { hp:38, meleeAtk:4, meleeDef:3, rangeAtk:11, rangeDef:3, magicDef:3, initiative:8 },
     abilities: [
       { id:'triple_shot',  name:'Тройной залп',   unlockedAt:1, type:'passive', desc:'3 выстрела за ход (каждый −40% от базы, но по разным целям).' },
@@ -375,7 +375,7 @@ const ALLIES = [
     id: 'skeleton_archer', name: 'Скелет-лучник', race: 'undead', class: 'archer',
     starRange: [2, 3], icon: '🦴',
     attackMode: { shots:2 },
-    rangeModifiers: { 1:1.0, 2:0.75, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     base: { hp:52, meleeAtk:4, meleeDef:4, rangeAtk:15, rangeDef:3, magicDef:2, initiative:6 },
     abilities: [
       { id:'bone_arrow',    name:'Костяная стрела', unlockedAt:2, type:'on_hit',  desc:'20% шанс снизить инициативу цели на 2.' },
@@ -463,7 +463,7 @@ const ALLIES = [
     id: 'ohotnik', name: 'Охотник', race: 'human', class: 'archer',
     starRange: [1, 2], icon: '🏹',
     attackMode: { shots:2 },
-    rangeModifiers: { 1:1.0, 2:0.75, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     base: { hp:50, meleeAtk:6, meleeDef:4, rangeAtk:13, rangeDef:5, magicDef:3, initiative:7 },
     abilities: [
       { id:'beast_grip',   name:'Звериная хватка',  unlockedAt:1, type:'passive', desc:'+30% урона против зверей-врагов.' },

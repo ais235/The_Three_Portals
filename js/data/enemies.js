@@ -84,7 +84,7 @@ const ENEMY_TEMPLATES = {
     base: { hp:38, meleeAtk:6, meleeDef:4, rangeAtk:11, rangeDef:4, magicDef:3, initiative:6 },
     attackColumns: [1,2], attackType: 'ranged', ai: 'attack_lowest_hp',
     role: 'archer', aiPattern: 'sniper',
-    rangeModifiers: { 1:1.0, 2:0.85, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     abilities: [],
   },
 
@@ -170,7 +170,7 @@ const ENEMY_TEMPLATES = {
     base: { hp:32, meleeAtk:5, meleeDef:4, rangeAtk:14, rangeDef:4, magicDef:2, initiative:6 },
     attackColumns: [1,2], attackType: 'ranged', ai: 'attack_lowest_hp',
     role: 'archer', aiPattern: 'sniper',
-    rangeModifiers: { 1:1.0, 2:0.80, 3:null },
+    rangeModifiers: { 1:1.0, 2:0.75, 3:0.5 },
     abilities: [],
   },
 

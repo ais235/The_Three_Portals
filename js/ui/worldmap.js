@@ -94,13 +94,13 @@ const WorldMap = {
         const tmpl = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[templateId] : null;
         if (!tmpl || typeof createBattleEnemy !== 'function') return;
 
-        let col = 1;
         const at = tmpl.attackType || 'melee';
-        if (at === 'ranged') col = 2;
-        else if (at === 'magic') col = 3;
+        const col = at === 'ranged' ? 2 : (at === 'magic' ? 3 : 1);
+        if ((colCount[col] || 0) >= 3) return; // strict line limit: 3 units per column
 
-        const row = colCount[col] + 1;
-        colCount[col]++;
+        const row = (colCount[col] || 0) + 1;
+        colCount[col] = row;
+
         const e = createBattleEnemy(templateId, col, row, stars, level);
         if (e) units.push(e);
       });
