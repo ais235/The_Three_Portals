@@ -306,7 +306,7 @@ function calculateUnitPower(unit) {
 }
 
 // Gate noisy debug logs from balancing simulation.
-const BALANCE_DEBUG = false;
+const BALANCE_DEBUG = true
 
 function calculateEnemyPower(unit) {
   return calculateUnitPower(unit);
@@ -315,14 +315,85 @@ function calculateEnemyPower(unit) {
 function calculateGroupPower(units) {
   if (!units || !units.length) return 0;
 
+  // Базовая сумма сил
   const sum = units.reduce((acc, u) => acc + calculateUnitPower(u), 0);
   const countMod = 1 + (units.length - 1) * 0.12;
-  const result = Math.round(sum * countMod);
+
+  // 1. Модификатор защиты задних линий
+  const hasFrontline = units.some(u => u.column === 1);
+  const hasBackline = units.some(u => u.column > 1);
+  let backlineMod = 1.0;
+  if (hasFrontline && hasBackline) backlineMod = 1.15;
+  if (!hasFrontline && hasBackline) backlineMod = 0.70;
+  if (hasFrontline && !hasBackline) backlineMod = 0.90;
+
+  // 2. Модификатор доступности целей
+  const attackableColumns = new Set();
+  units.forEach(u => {
+    const cols = u.attackColumns || [u.column];
+    cols.forEach(c => attackableColumns.add(c));
+  });
+  const coverage = attackableColumns.size;
+  let coverageMod = 1.0;
+  if (coverage >= 3) coverageMod = 1.15;
+  else if (coverage === 2) coverageMod = 1.05;
+  else coverageMod = 0.95;
+
+  // 3. Модификатор синергии ролей
+  const roles = units.map(u => u.role);
+  const hasTank = roles.includes('tank');
+  const hasHealer = roles.includes('healer');
+  const hasArcher = roles.includes('archer');
+  const hasMage = roles.includes('mage');
+  const hasBruiser = roles.includes('bruiser');
+  const hasAssassin = roles.includes('assassin');
+  const hasControl = roles.includes('control');
+
+  let synergyMod = 1.0;
+  if (hasTank && hasHealer) synergyMod += 0.10;
+  if (hasTank && (hasArcher || hasMage)) synergyMod += 0.08;
+  if (hasTank && hasAssassin) synergyMod += 0.05;
+  if (hasControl && (hasMage || hasArcher)) synergyMod += 0.05;
+  if (!hasTank && !hasBruiser && (hasArcher || hasMage)) synergyMod -= 0.15;
+  if (!hasTank && !hasHealer && roles.every(r => ['bruiser', 'assassin'].includes(r))) synergyMod -= 0.10;
+  synergyMod = Math.min(1.25, Math.max(0.75, synergyMod));
+
+  // 4. Модификатор распределения по колонкам
+  const colCount = { 1: 0, 2: 0, 3: 0 };
+  units.forEach(u => { if (u.column) colCount[u.column]++; });
+  const total = units.length;
+  const hasCol1 = colCount[1] > 0;
+  const hasCol2 = colCount[2] > 0;
+  const hasCol3 = colCount[3] > 0;
+
+  let columnMod = 1.0;
+  if (hasCol1 && hasCol2 && hasCol3) columnMod = 1.10;
+  else if (hasCol1 && (hasCol2 || hasCol3)) columnMod = 1.00;
+  else {
+    const allSameColumn = (colCount[1] === total) || (colCount[2] === total) || (colCount[3] === total);
+    if (allSameColumn) {
+      const allMelee = units.every(u => u.attackType === 'melee');
+      if (colCount[1] === total && allMelee) columnMod = 0.65;
+      else columnMod = 0.80;
+    } else columnMod = 0.95;
+  }
+
+  // Итоговый модификатор
+  const totalMod = backlineMod * coverageMod * synergyMod * columnMod;
+
+  const result = Math.round(sum * countMod * totalMod);
 
   if (BALANCE_DEBUG) {
     console.log('[GROUP POWER]', {
-      units: units.map(u => u.id),
-      power: result,
+      units: units.map(u => `${u.id}(${u.role},c${u.column})`),
+      sum,
+      countMod,
+      backlineMod,
+      coverageMod,
+      synergyMod,
+      columnMod,
+      totalMod,
+      result
     });
   }
 
@@ -351,12 +422,10 @@ function buildEncounterPlacedUnits(encounter, stars, level) {
   return units;
 }
 
-/** Сила группы после синергий (копии юнитов, основной бой не трогаем). */
+/** Сила группы после синергий и encounter.statScale (копии юнитов). */
 function estimateEncounterPowerAfterSynergies(encounter, stars, level) {
-  const raw = buildEncounterPlacedUnits(encounter, stars, level);
-  const probe = raw.map(u => ({ ...u, stats: { ...u.stats } }));
-  applyEnemySynergies(probe);
-  return calculateGroupPower(probe);
+  const units = buildEncounterUnitsWithSynergies(encounter, stars, level);
+  return calculateGroupPower(units);
 }
 
 // ── Analytics: real enemy power by encounter combinations (no scaling) ────
@@ -371,14 +440,8 @@ function analyzeRealEnemyPowerForLocation(location) {
   const encounters = Array.isArray(location?.encounters) ? location.encounters : [];
   const { stars, level } = getLocationStarsAndLevel(location);
 
-  // If no encounters have explicit `weight` → treat all as equally likely.
-  // Otherwise use provided weights; encounters without `weight` default to `1`.
-  const hasAnyWeight = encounters.some(enc => typeof enc?.weight === 'number' && Number.isFinite(enc.weight));
-  const rawWeights = encounters.map(enc => {
-    if (!hasAnyWeight) return 1;
-    const w = (typeof enc?.weight === 'number' && Number.isFinite(enc.weight)) ? enc.weight : 1;
-    return Math.max(0, w);
-  });
+  // Веса из данных + dev override (__BALANCE_OVERRIDES__); при всех 1 — равномерно.
+  const rawWeights = encounters.map(enc => getEncounterEffectiveWeight(enc));
 
   const sumW = rawWeights.reduce((a, b) => a + b, 0);
   const chances = encounters.map((_, i) => {
@@ -525,13 +588,36 @@ function runFullBalanceAnalysis() {
   }
 }
 
+/** Вес encounter с учётом `window.__BALANCE_OVERRIDES__.encounters[id].weight`. */
+function getEncounterEffectiveWeight(encounter) {
+  if (!encounter) return 1;
+  const ov = typeof window !== 'undefined' && window.__BALANCE_OVERRIDES__?.encounters?.[encounter.id];
+  if (ov && typeof ov.weight === 'number' && Number.isFinite(ov.weight)) return Math.max(0, ov.weight);
+  if (typeof encounter.weight === 'number' && Number.isFinite(encounter.weight)) return Math.max(0, encounter.weight);
+  return 1;
+}
+
+function _weightedPickEnc(scoredRows) {
+  if (!scoredRows.length) return null;
+  const w = scoredRows.map(x => getEncounterEffectiveWeight(x.enc));
+  const sum = w.reduce((a, b) => a + b, 0);
+  if (!(sum > 0)) return scoredRows[Math.floor(Math.random() * scoredRows.length)];
+  let r = Math.random() * sum;
+  for (let i = 0; i < scoredRows.length; i++) {
+    r -= w[i];
+    if (r <= 0) return scoredRows[i];
+  }
+  return scoredRows[scoredRows.length - 1];
+}
+
 function pickEncounterForLocation(location, stars, level) {
   const list = location.encounters;
   if (!list || !list.length) return null;
 
   const tp = location.targetPower;
   if (!tp || !Array.isArray(tp) || tp.length !== 2) {
-    return list[Math.floor(Math.random() * list.length)];
+    const row = _weightedPickEnc(list.map(e => ({ enc: e, power: 0 })));
+    return row ? row.enc : list[0];
   }
 
   const [minP, maxP] = tp;
@@ -550,11 +636,11 @@ function pickEncounterForLocation(location, stars, level) {
 
   let chosen;
   if (inRange.length) {
-    chosen = inRange[Math.floor(Math.random() * inRange.length)];
+    chosen = _weightedPickEnc(inRange);
   } else {
     const bestD = Math.min(...scored.map(x => distToBand(x.power)));
     const ties = scored.filter(x => distToBand(x.power) === bestD);
-    chosen = ties[Math.floor(Math.random() * ties.length)];
+    chosen = _weightedPickEnc(ties);
   }
 
   if (BALANCE_DEBUG) {
@@ -614,6 +700,125 @@ function applyEnemySynergies(units) {
   }
 }
 
+/** Доп. множитель силы encounter (после синергий), как микро-скейл в generateLocationEnemies. */
+function applyEncounterStoredStatScale(units, encounter) {
+  const s = (typeof encounter?.statScale === 'number' && Number.isFinite(encounter.statScale) && encounter.statScale > 0)
+    ? encounter.statScale
+    : 1;
+  if (s !== 1) applyEnemyStatScale(units, s);
+}
+
+/** Копии юнитов: плейсмент → синергии → encounter.statScale. */
+function buildEncounterUnitsWithSynergies(encounter, stars, level) {
+  const raw = buildEncounterPlacedUnits(encounter, stars, level);
+  const units = raw.map(u => ({ ...u, stats: { ...u.stats } }));
+  applyEnemySynergies(units);
+  applyEncounterStoredStatScale(units, encounter);
+  return units;
+}
+
+/** Множит боевые статы врагов; ratio ограничивается 0.85–1.25. */
+function applyScale(units, ratio) {
+  if (!units || !units.length) return;
+  const r = Math.max(0.85, Math.min(1.25, ratio));
+  applyEnemyStatScale(units, r);
+}
+
+function analyzeEncounter(encounter, location) {
+  const { stars, level } = getLocationStarsAndLevel(location);
+  const units = buildEncounterUnitsWithSynergies(encounter, stars, level);
+  return {
+    id: encounter?.id ?? null,
+    units,
+    power: calculateGroupPower(units),
+  };
+}
+
+/** Случайный шаблон из пула локации (`location.enemies`); пишет в `encounter.enemies`. */
+function addUnit(encounter, location) {
+  const pool = location?.enemies;
+  if (!Array.isArray(pool) || !pool.length) return null;
+  if (!encounter.enemies) encounter.enemies = [];
+  const templateId = pool[Math.floor(Math.random() * pool.length)];
+  if ((typeof ENEMY_TEMPLATES !== 'undefined') && ENEMY_TEMPLATES && !ENEMY_TEMPLATES[templateId]) return null;
+  encounter.enemies.push(templateId);
+  return templateId;
+}
+
+function rebalanceEncounter(encounter, targetPower, location) {
+  const actions = [];
+  if (!encounter) {
+    console.log('[AUTO BALANCE]', { encounter: null, oldPower: 0, targetPower, newPower: 0, actions });
+    return { oldPower: 0, newPower: 0, actions, newUnits: [] };
+  }
+
+  const { stars, level } = getLocationStarsAndLevel(location);
+  const refreshUnits = () => buildEncounterUnitsWithSynergies(encounter, stars, level);
+
+  let units = refreshUnits();
+  const oldPower = calculateGroupPower(units);
+
+  const fmtScale = x => String(Math.round(x * 100) / 100);
+
+  let currentPower = oldPower;
+  if (currentPower <= 0) {
+    console.log('[AUTO BALANCE]', { encounter: encounter.id, oldPower, targetPower, newPower: 0, actions });
+    return { oldPower, newPower: 0, actions, newUnits: units };
+  }
+
+  let ratio = targetPower / currentPower;
+
+  if (ratio < 0.75 && (encounter.enemies || []).length > 1) {
+    const weakest = units.reduce((a, b) => (
+      calculateUnitPower(a) < calculateUnitPower(b) ? a : b
+    ));
+    const idx = encounter.enemies.indexOf(weakest.id);
+    if (idx >= 0) {
+      encounter.enemies.splice(idx, 1);
+      actions.push(`remove unit: ${weakest.id}`);
+      units = refreshUnits();
+      currentPower = calculateGroupPower(units);
+      ratio = currentPower > 0 ? targetPower / currentPower : 1;
+    }
+  }
+
+  if (ratio >= 0.85 && ratio <= 1.15) {
+    // no-op
+  } else if (ratio < 0.85) {
+    applyScale(units, ratio);
+    const r = Math.max(0.85, Math.min(1.25, ratio));
+    encounter.statScale = (encounter.statScale ?? 1) * r;
+    actions.push(`scale x${fmtScale(r)}`);
+  } else if (ratio <= 1.35) {
+    applyScale(units, ratio);
+    const r = Math.max(0.85, Math.min(1.25, ratio));
+    encounter.statScale = (encounter.statScale ?? 1) * r;
+    actions.push(`scale x${fmtScale(r)}`);
+  } else {
+    const addedId = addUnit(encounter, location);
+    if (addedId) {
+      actions.push(`add unit: ${addedId}`);
+      units = refreshUnits();
+    } else {
+      applyScale(units, ratio);
+      const r = Math.max(0.85, Math.min(1.25, ratio));
+      encounter.statScale = (encounter.statScale ?? 1) * r;
+      actions.push(`scale x${fmtScale(r)}`);
+    }
+  }
+
+  const newPower = calculateGroupPower(units);
+  console.log('[AUTO BALANCE]', {
+    encounter: encounter.id,
+    oldPower,
+    targetPower,
+    newPower,
+    actions,
+  });
+
+  return { oldPower, newPower, actions, newUnits: units };
+}
+
 // ── Balance table generation (min/max player power + targetPower) ─────────────
 let BALANCE_TABLE_CACHE = null;
 
@@ -636,6 +841,13 @@ function sampleEnemyCountWithPlusOne(location) {
   const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
   const base = baseMin + Math.floor(Math.random() * (baseMax - baseMin + 1));
   return Math.random() < 0.3 ? base + 1 : base;
+}
+
+/** Число врагов в бою (как у `sampleEnemyCountWithPlusOne`) — для UI карты мира. */
+function getEnemySpawnCountRangeForUI(location) {
+  const maxUnits = location?.maxUnits ?? 1;
+  const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
+  return { min: baseMin, max: baseMax + 1 };
 }
 
 function createAllyForPowerSim(allyId, stars, powerLevel, col = 1, row = 1) {
@@ -692,11 +904,36 @@ function buildBalanceTableForAllLocations() {
 
   const result = [];
 
-  for (const location of LOCATIONS) {
-    const maxUnits = location.maxUnits || 1;
-    const maxStars = location.maxStars || 1;
+  // Предварительный проход: определяем максимальные параметры для каждой зоны
+  const zoneMaxParams = {};
 
-    // Step 1.1 — minimum player (stars=1, level=1)
+  for (const location of LOCATIONS) {
+    const zone = location.zone;
+    if (!zoneMaxParams[zone]) {
+      zoneMaxParams[zone] = {
+        maxStars: 0,
+        maxUnits: 0,
+      };
+    }
+    zoneMaxParams[zone].maxStars = Math.max(zoneMaxParams[zone].maxStars, location.maxStars);
+    zoneMaxParams[zone].maxUnits = Math.max(zoneMaxParams[zone].maxUnits, location.maxUnits);
+  }
+
+  console.log('[ZONE MAX PARAMS]', zoneMaxParams);
+
+  for (const location of LOCATIONS) {
+    const zone = location.zone;
+    // Используем максимальные параметры зоны для расчёта силы игрока
+    const zoneMax = zoneMaxParams[zone];
+    const maxStarsForZone = zoneMax.maxStars;
+    const maxUnitsForZone = zoneMax.maxUnits;
+    const levelMax = maxStarsForZone * 10;  // максимальный уровень для зоны
+
+    // А для ограничений локации оставляем как есть (они нужны для фильтрации)
+    const locationMaxStars = location.maxStars;
+    const locationMaxUnits = location.maxUnits;
+
+    // MIN: карты, доступные при ★1 (всегда доступны)
     const eligibleMin = ALLIES.filter(a => {
       const sr = a.starRange || [1, 1];
       return sr[0] <= 1 && 1 <= sr[1];
@@ -706,37 +943,57 @@ function buildBalanceTableForAllLocations() {
       .filter(Boolean)
       .map(u => ({ u, p: calculateUnitPower(u) }))
       .sort((a, b) => a.p - b.p)
-      .slice(0, Math.min(maxUnits, eligibleMin.length))
+      .slice(0, Math.min(maxUnitsForZone, eligibleMin.length))
       .map(x => x.u);
 
     const minPlayerPower = minUnits.length ? calculateGroupPower(minUnits) : 0;
 
-    // Step 1.2 — maximum player (stars=maxStars, level=stars*10)
-    const levelMax = maxStars * 10;
+    // MAX: карты, доступные при максимальной звёздности ЗОНЫ
     const eligibleMax = ALLIES.filter(a => {
       const sr = a.starRange || [1, 1];
-      return sr[0] <= maxStars && maxStars <= sr[1];
+      return sr[0] <= maxStarsForZone && maxStarsForZone <= sr[1];
     });
     const maxUnitsList = eligibleMax
-      .map(a => createAllyForPowerSim(a.id, maxStars, levelMax))
+      .map(a => createAllyForPowerSim(a.id, maxStarsForZone, levelMax))
       .filter(Boolean)
       .map(u => ({ u, p: calculateUnitPower(u) }))
       .sort((a, b) => b.p - a.p)
-      .slice(0, Math.min(maxUnits, eligibleMax.length))
+      .slice(0, Math.min(maxUnitsForZone, eligibleMax.length))
       .map(x => x.u);
 
     const maxPlayerPower = maxUnitsList.length ? calculateGroupPower(maxUnitsList) : 0;
 
     const midPlayerPower = (minPlayerPower + maxPlayerPower) / 2;
 
-    // Step 2 — targetPower
+    // Step 2 — targetPower с учётом зоны и босса
+    const isBoss = location.isBoss || false;
+
+    // Множитель сложности от зоны (чем выше зона, тем сложнее)
+    const zoneDifficulty = {
+      1: 0.70,   // зона 1: 70% от силы игрока (обучение)
+      2: 0.85,   // зона 2: 85%
+      3: 1.00,   // зона 3: 100% (игрок уже прокачан)
+      4: 1.15,   // зона 4: 115%
+      5: 1.30,   // зона 5: 130%
+    }[zone] || 1.0;
+
+    // Босс на 30% сильнее обычной локации в своей зоне
+    const bossMultiplier = isBoss ? 1.30 : 1.0;
+
+    // Реалистичная сила игрока (70% от max, 30% от min — средний состав)
+    const realisticPlayerPower = minPlayerPower * 0.3 + maxPlayerPower * 0.7;
+
+    // Целевая сила врагов
+    const targetBase = realisticPlayerPower * zoneDifficulty * bossMultiplier;
+
+    // Диапазон ±15% (рандом в бою)
     const targetPower = [
-      Math.round(minPlayerPower * 1.1),
-      Math.round(midPlayerPower * 1.05),
-    ].sort((a, b) => a - b);
+      Math.round(targetBase * 0.85),
+      Math.round(targetBase * 1.15)
+    ];
 
     // Step 3 — recommended enemies count range (base + possible +1)
-    const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
+    const { baseMin, baseMax } = getRecommendedEnemyCountRange(locationMaxUnits);
     // Spec: recommendation shows base range (70%), while +1 is handled during actual spawn.
     const recommendedEnemies = `${baseMin}–${baseMax}`;
     const notes = getLocationDifficultyNote(location);
@@ -749,10 +1006,12 @@ function buildBalanceTableForAllLocations() {
     location.recommendedEnemies = recommendedEnemies;
     location.notes = notes;
 
+    console.log(`[BALANCE] ${location.id}: zone=${zone}, maxStarsZone=${maxStarsForZone}, maxUnitsZone=${maxUnitsForZone}, cardsAvailable=${eligibleMax.length}, player=${Math.round(realisticPlayerPower)}, target=[${targetPower[0]}-${targetPower[1]}]`);
+
     result.push({
       location: location.id,
-      maxStars,
-      maxUnits,
+      maxStars: locationMaxStars,
+      maxUnits: locationMaxUnits,
       minPlayerPower,
       maxPlayerPower,
       targetPower,
@@ -796,9 +1055,96 @@ function normalizeEncounterToCount(encounter, location, desiredCount) {
 
   if (enemies.length > desiredCount) enemies.splice(desiredCount);
 
-  return {
+  const out = {
     id: `${encounter.id}_c${desiredCount}`,
     enemies,
+  };
+  if (typeof encounter.statScale === 'number' && Number.isFinite(encounter.statScale) && encounter.statScale > 0) {
+    out.statScale = encounter.statScale;
+  }
+  return out;
+}
+
+/** Детерминированный добор из пула (для превью силы как в бою). */
+function normalizeEncounterToCountDeterministic(encounter, location, desiredCount) {
+  const enemies = (encounter.enemies || []).slice();
+
+  // Для превью используем фильтрацию по темам
+  const themes = location.enemyThemes || ['basic'];
+  let filteredPool = (location.enemies || []).filter(enemyId => {
+    const tmpl = ENEMY_TEMPLATES[enemyId];
+    if (!tmpl) return false;
+    const enemyThemes = tmpl.themes || [];
+    return themes.some(theme => enemyThemes.includes(theme));
+  });
+
+  if (filteredPool.length === 0) {
+    console.warn(`[WARN] Preview: No enemies match themes for ${location.id}, using original pool`);
+    filteredPool = location.enemies || [];
+  }
+
+  let i = 0;
+  while (enemies.length < desiredCount && filteredPool.length) {
+    enemies.push(filteredPool[i % filteredPool.length]);
+    i++;
+  }
+  if (enemies.length > desiredCount) enemies.splice(desiredCount);
+
+  const out = {
+    id: `${encounter.id}_c${desiredCount}`,
+    enemies,
+  };
+  if (typeof encounter.statScale === 'number' && Number.isFinite(encounter.statScale) && encounter.statScale > 0) {
+    out.statScale = encounter.statScale;
+  }
+  return out;
+}
+
+/** Ожидаемое число врагов для превью (среднее по sampleEnemyCountWithPlusOne). */
+function deterministicEnemyCountForBalancePreview(location) {
+  const maxUnits = location?.maxUnits ?? 1;
+  const { baseMin, baseMax } = getRecommendedEnemyCountRange(maxUnits);
+  const evBase = (baseMin + baseMax) / 2;
+  return Math.max(1, Math.round(evBase + 0.3));
+}
+
+/**
+ * Сила группы врагов после того же пайплайна, что в generateLocationEnemies:
+ * нормализация числа → плейсмент → синергии → statScale на spawn → макро-скейл.
+ * options.overrideTargetPower — целевая сила после скейла (= override в dev-таблице); иначе середина location.targetPower.
+ */
+function estimateEnemyPowerAsInBattle(location, baseEncounter, options = {}) {
+  if (!location || !baseEncounter) {
+    return { power: 0, basePower: 0, scale: 1, targetEncounterPower: 0, spawnEncounter: null };
+  }
+  const { stars, level } = getLocationStarsAndLevel(location);
+  const n = deterministicEnemyCountForBalancePreview(location);
+  const spawnEncounter = normalizeEncounterToCountDeterministic(baseEncounter, location, n);
+  const enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
+  applyEnemySynergies(enemies);
+  applyEncounterStoredStatScale(enemies, spawnEncounter);
+
+  const baseEncounterPower = calculateGroupPower(enemies);
+  const tp = location.targetPower || [baseEncounterPower, baseEncounterPower];
+  const hasOverride = options.overrideTargetPower != null && Number.isFinite(options.overrideTargetPower);
+  const targetEncounterPower = hasOverride
+    ? options.overrideTargetPower
+    : Math.round((tp[0] + tp[1]) / 2);
+
+  let scale = baseEncounterPower > 0 ? (targetEncounterPower / baseEncounterPower) : 1;
+  if (hasOverride) {
+    scale = Math.max(0.1, Math.min(10, scale));
+  } else {
+    scale = Math.max(0.85, Math.min(1.15, scale));
+  }
+
+  applyEnemyStatScale(enemies, scale);
+  return {
+    power: calculateGroupPower(enemies),
+    basePower: baseEncounterPower,
+    scale,
+    targetEncounterPower,
+    spawnEncounter,
   };
 }
 
@@ -815,13 +1161,41 @@ function generateLocationEnemies(location, playerUnits = null) {
 
   let enemies = [];
   let spawnEncounter = null;
+  let chosenBaseEncounter = null;
 
   if (location.encounters && location.encounters.length) {
-    const chosen = pickEncounterForLocation(location, stars, level);
-    spawnEncounter = normalizeEncounterToCount(chosen, location, desiredEnemyCount);
+    chosenBaseEncounter = pickEncounterForLocation(location, stars, level);
+    spawnEncounter = normalizeEncounterToCount(chosenBaseEncounter, location, desiredEnemyCount);
     enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
   } else {
-    const pool = location.enemies || [];
+    // Получаем темы локации
+    const themes = location.enemyThemes || ['basic'];
+
+    // Фильтруем пул врагов по темам
+    let pool = (location.enemies || []).filter(enemyId => {
+      const tmpl = ENEMY_TEMPLATES[enemyId];
+      if (!tmpl) {
+        console.warn(`[WARN] Enemy template not found: ${enemyId}`);
+        return false;
+      }
+
+      // Если у врага нет themes, пропускаем
+      const enemyThemes = tmpl.themes || [];
+      if (enemyThemes.length === 0) {
+        console.warn(`[WARN] Enemy ${enemyId} has no themes`);
+        return false;
+      }
+
+      // Враг подходит, если у него есть хотя бы одна тема из themes локации
+      return themes.some(theme => enemyThemes.includes(theme));
+    });
+
+    // Если после фильтрации пуст — используем оригинальный пул с предупреждением
+    if (pool.length === 0) {
+      console.warn(`[WARN] No enemies match themes ${JSON.stringify(themes)} for ${location.id}, using original pool`);
+      pool = location.enemies || [];
+    }
+
     const templateIds = pool.length
       ? Array.from({ length: desiredEnemyCount }, () => pool[Math.floor(Math.random() * pool.length)])
       : [];
@@ -847,15 +1221,37 @@ function generateLocationEnemies(location, playerUnits = null) {
   }
 
   applyEnemySynergies(enemies);
+  applyEncounterStoredStatScale(enemies, spawnEncounter);
 
-  // Step 4 — auto scale to targetEncounterPower
+  // Step 4 — макро-скейл к целевой силе (dev override = желаемая сила в бою после скейла)
   const baseEncounterPower = calculateGroupPower(enemies);
   const tp = location.targetPower || [baseEncounterPower, baseEncounterPower];
-  const targetEncounterPower = Math.round(tp[0] + Math.random() * (tp[1] - tp[0]));
+  const chosenId = chosenBaseEncounter?.id;
+  const encOverride = chosenId && typeof window !== 'undefined'
+    ? window.__BALANCE_OVERRIDES__?.encounters?.[chosenId]
+    : null;
+
+  let targetEncounterPower;
+  if (
+    encOverride
+    && typeof encOverride.targetPower === 'number'
+    && Number.isFinite(encOverride.targetPower)
+  ) {
+    targetEncounterPower = encOverride.targetPower;
+  } else {
+    targetEncounterPower = Math.round(tp[0] + Math.random() * (tp[1] - tp[0]));
+  }
 
   let scale = baseEncounterPower > 0 ? (targetEncounterPower / baseEncounterPower) : 1;
-  // Clamp to spec.
-  scale = Math.max(0.85, Math.min(1.15, scale));
+  if (
+    encOverride
+    && typeof encOverride.targetPower === 'number'
+    && Number.isFinite(encOverride.targetPower)
+  ) {
+    scale = Math.max(0.1, Math.min(10, scale));
+  } else {
+    scale = Math.max(0.85, Math.min(1.15, scale));
+  }
 
   applyEnemyStatScale(enemies, scale);
 
@@ -877,6 +1273,10 @@ function generateLocationEnemies(location, playerUnits = null) {
       unitCount: enemies.length,
       power: scaledPower,
     });
+  }
+
+  if (typeof window !== 'undefined') {
+    window.__LAST_ENCOUNTER_BASE_ID__ = chosenBaseEncounter?.id ?? spawnEncounter?.id ?? null;
   }
 
   return enemies;

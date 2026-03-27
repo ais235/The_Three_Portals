@@ -673,6 +673,7 @@ const App = {
   _skipBattleInit:  false,  // set true when initCustomBattle handles setup
 
   init() {
+    if (typeof loadBalanceOverrides === 'function') loadBalanceOverrides();
     GameState.load();
     BarracksUI.init();
     if (typeof ArsenalUI !== 'undefined') ArsenalUI.init();
@@ -866,6 +867,14 @@ const App = {
     if (resultEl) resultEl.classList.add('hidden');
     document.getElementById('btn-copy-battle-log')?.classList.add('hidden');
 
+    const playerPower = typeof calculateGroupPower === 'function' ? calculateGroupPower(allies) : 0;
+    const enemyPower = typeof calculateGroupPower === 'function' ? calculateGroupPower(enemies) : 0;
+    const encounterId = window.__LAST_ENCOUNTER_BASE_ID__ ?? (this._currentLocation ? '—' : 'test');
+    window.__LAST_BATTLE_POWER_SNAPSHOT__ = { playerPower, enemyPower, encounterId };
+    if (typeof BattlePowerInfo !== 'undefined' && BattlePowerInfo.updateStrip) {
+      BattlePowerInfo.updateStrip(playerPower, enemyPower, encounterId);
+    }
+
     BattleLog.init();
     if (this._currentLocation) {
       BattleLog.addEntry({
@@ -886,6 +895,7 @@ const App = {
 
   initBattle() {
     this._currentLocation = null;
+    window.__LAST_ENCOUNTER_BASE_ID__ = 'test';
     const { allies, enemies } = createTestBattle();
     this._startBattle(allies, enemies);
   },
@@ -970,9 +980,54 @@ const App = {
     const deadEnemies = battleState.enemies.filter(u => !u.isAlive).length;
     if (deadEnemies > 0) GameState.recordKills(deadEnemies);
 
-    this.showBattleRewards(result, battleState, {
+    const rewardPayload = {
       coinsEarned, coinsPenalty, droppedWeapon, droppedScroll, droppedArtifact,
+    };
+    this.appendBattleOutcomeToLog(result, battleState, rewardPayload);
+    this.showBattleRewards(result, battleState, rewardPayload);
+  },
+
+  /** Строки силы отрядов и награды в конец лога боя. */
+  appendBattleOutcomeToLog(result, battleState, rewards) {
+    if (typeof BattleLog === 'undefined' || !BattleLog.addEntry) return;
+
+    const snap = window.__LAST_BATTLE_POWER_SNAPSHOT__ || {};
+    let pAlly = snap.playerPower;
+    let pEnemy = snap.enemyPower;
+    if ((pAlly == null || pEnemy == null) && typeof calculateGroupPower === 'function') {
+      pAlly = calculateGroupPower(battleState.allies || []);
+      pEnemy = calculateGroupPower(battleState.enemies || []);
+    }
+
+    const enc = snap.encounterId && snap.encounterId !== '—' ? ` · встреча: ${snap.encounterId}` : '';
+
+    BattleLog.addEntry({ type: 'round', text: '── Итог боя ──' });
+    BattleLog.addEntry({
+      type: 'system',
+      text: `Сила отрядов: игрок ${pAlly ?? '—'} vs враг ${pEnemy ?? '—'}${enc}`,
     });
+
+    if (result === 'victory') {
+      const parts = [`Награда: +${rewards.coinsEarned} монет`];
+      if (rewards.droppedWeapon)
+        parts.push(`оружие: ${rewards.droppedWeapon.name}`);
+      if (rewards.droppedScroll) {
+        const scrollBonus =
+          rewards.droppedScroll === 'gold' ? 2000
+            : rewards.droppedScroll === 'silver' ? 500 : 100;
+        parts.push(`свиток ${rewards.droppedScroll} (+${scrollBonus} монет)`);
+      }
+      if (rewards.droppedArtifact) {
+        parts.push(`${rewards.droppedArtifact.icon} ${rewards.droppedArtifact.name}`);
+      }
+      BattleLog.addEntry({ type: 'system', text: parts.join(' · ') });
+    } else {
+      const pen = rewards.coinsPenalty || 0;
+      BattleLog.addEntry({
+        type: 'system',
+        text: pen > 0 ? `После поражения: −${pen} монет` : 'Поражение: штраф по монетам не применён',
+      });
+    }
   },
 
   showBattleRewards(result, battleState, rewards) {
@@ -993,6 +1048,10 @@ const App = {
     } else {
       if (icon)  icon.textContent = '💀';
       if (title) { title.textContent = 'ПОРАЖЕНИЕ!'; title.style.color = '#ff4444'; }
+    }
+
+    if (typeof BattlePowerInfo !== 'undefined' && BattlePowerInfo.updateResultBlock) {
+      BattlePowerInfo.updateResultBlock();
     }
 
     if (rewardsEl) {

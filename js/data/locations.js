@@ -16,7 +16,7 @@ const LOCATIONS = [
   // ════════════════════════════════════════════════════════════
 
   {
-    id: 'loc_1', name: 'Крысиные норы', zone: 1,
+    id: 'loc_1', name: 'Крысиные норы', zone: 1, enemyThemes: ['swarm', 'basic'],
     orderX: 1, icon: '🐀',
     mapX: 10, mapY: 30, mapUnit: 'percent',
     maxStars: 3, maxUnits: 3,
@@ -37,7 +37,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_2', name: 'Паутинные туннели', zone: 1,
+    id: 'loc_2', name: 'Паутинные туннели', zone: 1, enemyThemes: ['poison', 'swarm'],
     orderX: 2, icon: '🕷️',
     mapX: 26, mapY: 38, mapUnit: 'percent',
     maxStars: 1, maxUnits: 3,
@@ -57,7 +57,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_3a', name: 'Змеиные гнёзда', zone: 1,
+    id: 'loc_3a', name: 'Змеиные гнёзда', zone: 1, enemyThemes: ['poison', 'evasion'],
     orderX: 3, icon: '🐍',
     mapX: 42, mapY: 65, mapUnit: 'percent',
     maxStars: 1, maxUnits: 4,
@@ -77,7 +77,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_3b', name: 'Опушка леса', zone: 1,
+    id: 'loc_3b', name: 'Опушка леса', zone: 1, enemyThemes: ['ranged', 'basic'],
     orderX: 4, icon: '🌿',
     mapX: 52, mapY: 44, mapUnit: 'percent',
     maxStars: 2, maxUnits: 4,
@@ -97,7 +97,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_4', name: 'Лесная тропа', zone: 1,
+    id: 'loc_4', name: 'Лесная тропа', zone: 1, enemyThemes: ['ranged', 'control'],
     orderX: 5, icon: '🌲',
     mapX: 66, mapY: 52, mapUnit: 'percent',
     maxStars: 2, maxUnits: 5,
@@ -117,7 +117,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'boss_z1', name: 'Атаман Кровавый Кулак', zone: 1,
+    id: 'boss_z1', name: 'Атаман Кровавый Кулак', zone: 1, enemyThemes: ['boss', 'melee'],
     orderX: 6, icon: '👊',
     mapX: 86, mapY: 42, mapUnit: 'percent',
     maxStars: 2, maxUnits: 5,
@@ -138,7 +138,7 @@ const LOCATIONS = [
   // ════════════════════════════════════════════════════════════
 
   {
-    id: 'loc_5', name: 'Разбойный стан', zone: 2,
+    id: 'loc_5', name: 'Разбойный стан', zone: 2, enemyThemes: ['ranged', 'control'],
     orderX: 1, icon: '⚔️',
     mapX: 14, mapY: 60, mapUnit: 'percent',
     maxStars: 2, maxUnits: 5,
@@ -152,7 +152,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_6', name: 'Заброшенный храм', zone: 2,
+    id: 'loc_6', name: 'Заброшенный храм', zone: 2, enemyThemes: ['magic', 'undead'],
     orderX: 2, icon: '🏚️',
     mapX: 40, mapY: 50, mapUnit: 'percent',
     maxStars: 3, maxUnits: 6,
@@ -166,7 +166,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_7', name: 'Горный перевал', zone: 2,
+    id: 'loc_7', name: 'Горный перевал', zone: 2, enemyThemes: ['tank', 'ranged'],
     orderX: 3, icon: '⛰️',
     mapX: 54, mapY: 54, mapUnit: 'percent',
     maxStars: 3, maxUnits: 6,
@@ -180,7 +180,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'boss_z2', name: 'Страж Храма', zone: 2,
+    id: 'boss_z2', name: 'Страж Храма', zone: 2, enemyThemes: ['boss', 'tank'],
     orderX: 4, icon: '🗿',
     mapX: 84, mapY: 44, mapUnit: 'percent',
     maxStars: 3, maxUnits: 6,
@@ -201,7 +201,7 @@ const LOCATIONS = [
   // ════════════════════════════════════════════════════════════
 
   {
-    id: 'loc_8', name: 'Пещера троллей', zone: 3,
+    id: 'loc_8', name: 'Пещера троллей', zone: 3, enemyThemes: ['tank', 'heal'],
     orderX: 1, icon: '🪨',
     mapX: 18, mapY: 50, mapUnit: 'percent',
     maxStars: 3, maxUnits: 6,
@@ -215,7 +215,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_9', name: 'Логово нежити', zone: 3,
+    id: 'loc_9', name: 'Логово нежити', zone: 3, enemyThemes: ['undead', 'magic'],
     orderX: 2, icon: '💀',
     mapX: 42, mapY: 38, mapUnit: 'percent',
     maxStars: 4, maxUnits: 6,
@@ -229,7 +229,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_10', name: 'Крепость орков', zone: 3,
+    id: 'loc_10', name: 'Крепость орков', zone: 3, enemyThemes: ['melee', 'tank'],
     orderX: 3, icon: '🏰',
     mapX: 62, mapY: 56, mapUnit: 'percent',
     maxStars: 4, maxUnits: 6,
@@ -243,7 +243,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'boss_z3', name: 'Командир крепости', zone: 3,
+    id: 'boss_z3', name: 'Командир крепости', zone: 3, enemyThemes: ['boss', 'melee'],
     orderX: 4, icon: '⚔️',
     mapX: 86, mapY: 44, mapUnit: 'percent',
     maxStars: 4, maxUnits: 6,
@@ -264,7 +264,7 @@ const LOCATIONS = [
   // ════════════════════════════════════════════════════════════
 
   {
-    id: 'loc_11', name: 'Тёмный лес', zone: 4,
+    id: 'loc_11', name: 'Тёмный лес', zone: 4, enemyThemes: ['undead', 'evasion'],
     orderX: 1, icon: '🌑',
     mapX: 40, mapY: 90, mapUnit: 'percent',
     maxStars: 4, maxUnits: 6,
@@ -278,7 +278,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_12', name: 'Замок некроманта', zone: 4,
+    id: 'loc_12', name: 'Замок некроманта', zone: 4, enemyThemes: ['magic', 'summon'],
     orderX: 2, icon: '🏯',
     mapX: 60, mapY: 70, mapUnit: 'percent',
     maxStars: 5, maxUnits: 6,
@@ -292,7 +292,7 @@ const LOCATIONS = [
   },
 
   {
-    id: 'loc_gateway', name: 'Тронный зал', zone: 4,
+    id: 'loc_gateway', name: 'Тронный зал', zone: 4, enemyThemes: ['boss', 'magic'],
     orderX: 3, icon: '👑',
     mapX: 76, mapY: 52, mapUnit: 'percent',
     maxStars: 5, maxUnits: 6,
@@ -310,7 +310,7 @@ const LOCATIONS = [
   // ════════════════════════════════════════════════════════════
 
   {
-    id: 'boss_final', name: 'Некромант Морт', zone: 5,
+    id: 'boss_final', name: 'Некромант Морт', zone: 5, enemyThemes: ['boss', 'summon'],
     orderX: 1, icon: '☠️',
     mapX: 50, mapY: 46, mapUnit: 'percent',
     maxStars: 5, maxUnits: 6,

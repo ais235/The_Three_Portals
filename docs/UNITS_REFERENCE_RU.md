@@ -8,6 +8,64 @@
 
 ---
 
+## Как считается сила карты (актуальные формулы)
+
+### 1) Рост статов от звёзд и уровня силы
+
+Для любой карты (союзник/враг) боевые статы строятся из `base`:
+
+- `calcStat(base, stars, level) = round(base * (1 + stars * 0.2) * (1 + level * 0.05))`
+- `calcInitiative(base, stars, level) = round1(base + level * 0.1 + stars * 0.5)`
+
+Где:
+
+- `stars` — текущая звёздность,
+- `level` — `powerLevel` (для союзников) или уровень зоны (для врагов).
+
+### 2) Сила юнита (`calculateUnitPower`)
+
+На уже посчитанных боевых статах:
+
+- `atk = meleeAtk + rangeAtk + magic`
+- `def = meleeDef + rangeDef + magicDef`
+- `basePower = 0.35 * maxHp + 3.0 * atk + 0.8 * def + 6 * initiative`
+- модификатор роли (`roleMod`): `tank 0.9`, `bruiser 1.0`, `assassin 1.1`, `archer 1.1`, `mage 1.15`, `healer 0.85`, `control 1.1`, `boss 1.2`
+- модификатор набора умений (`abilityMod`):
+  - `+0.15` за heal-спеллы
+  - `+0.15` за poison-спеллы
+  - `+0.2` за control-спеллы (`stun|freeze|disable`)
+  - `+0.1`, если атака в 2+ колонок
+  - `+0.1`, если есть ranged/magic атака
+
+Итог:
+
+`unitPower = round(basePower * roleMod * abilityMod)`
+
+### 3) Сила отряда (`calculateGroupPower`)
+
+`groupPower = round(sum(unitPower) * (1 + (N - 1) * 0.12))`
+
+### 4) Уровни силы карты (ориентир)
+
+Это не отдельный параметр в данных, а функция от `stars` + `powerLevel` + экипировки/бонусов.
+
+- **Базовый ориентир карты**: считать `unitPower` на `stars=minStar`, `powerLevel=1`.
+- **Средний ориентир**: `stars=mid`, `powerLevel=stars*5`.
+- **Пиковый ориентир**: `stars=maxStar`, `powerLevel=stars*10`.
+
+Для союзников дополнительно влияют:
+
+- оружие/аксессуар (модифицируют stats),
+- бонусы артефактов храма (`getTempleBonus`).
+
+Для врагов дополнительно влияют:
+
+- синергии encounter (`applyEnemySynergies`),
+- накопленный `encounter.statScale`,
+- макро-скейл локации к целевой силе.
+
+---
+
 ## Союзники
 
 ### Стражник (`straznik`)
@@ -948,6 +1006,16 @@
 ---
 
 ## Враги (шаблоны)
+
+Примечание по актуальной боевой системе:
+
+- Ниже перечислены **базовые шаблоны** врагов из `ENEMY_TEMPLATES`.
+- В реальном бою итоговые враги могут отличаться по силе из-за:
+  - выбора encounter по весам (`weight` + dev override),
+  - добора/обрезки состава под текущее число врагов,
+  - синергий врагов,
+  - `encounter.statScale`,
+  - макро-скейла к целевой силе локации/override.
 
 ### Атаман Кровавый Кулак (`bandit_warlord`)
 

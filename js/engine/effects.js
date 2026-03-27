@@ -4,6 +4,25 @@
 
 const Effects = (() => {
 
+  function fmtTurnsAfterTick(remaining) {
+    if (remaining <= 0) return 'эффект снимается';
+    const n10 = remaining % 10;
+    const n100 = remaining % 100;
+    if (n10 === 1 && n100 !== 11) return `осталось ${remaining} ход`;
+    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return `осталось ${remaining} хода`;
+    return `осталось ${remaining} ходов`;
+  }
+
+  /** Для оглушения: сколько ходов действует, включая текущий пропуск. */
+  function fmtStunRemaining(fullTurns) {
+    if (fullTurns <= 0) return 'эффект снимается';
+    const n10 = fullTurns % 10;
+    const n100 = fullTurns % 100;
+    if (n10 === 1 && n100 !== 11) return `под оглушением ещё ${fullTurns} ход`;
+    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return `под оглушением ещё ${fullTurns} хода`;
+    return `под оглушением ещё ${fullTurns} ходов`;
+  }
+
   // Apply a new status effect to a unit
   function apply(unit, effectData) {
     // effectData: { type, duration, value, source }
@@ -28,30 +47,54 @@ const Effects = (() => {
     for (const eff of unit.statusEffects) {
       switch (eff.type) {
 
-        case 'poison':
+        case 'poison': {
           unit.stats.hp -= eff.value;
-          messages.push({ type: 'effect', text: `${unit.name} получает ${eff.value} урона от яда 🐍` });
+          const left = eff.duration - 1;
+          messages.push({
+            type: 'effect',
+            text: `${unit.name} — яд: ${eff.value} урона (${fmtTurnsAfterTick(left)}) 🐍`,
+          });
           break;
+        }
 
-        case 'burn':
+        case 'burn': {
           unit.stats.hp -= eff.value;
-          messages.push({ type: 'effect', text: `${unit.name} горит — ${eff.value} урона 🔥` });
+          const leftB = eff.duration - 1;
+          messages.push({
+            type: 'effect',
+            text: `${unit.name} — горение: ${eff.value} урона (${fmtTurnsAfterTick(leftB)}) 🔥`,
+          });
           break;
+        }
 
-        case 'bleed':
+        case 'bleed': {
           unit.stats.hp -= eff.value;
-          messages.push({ type: 'effect', text: `${unit.name} истекает кровью — ${eff.value} урона 💉` });
+          const leftBl = eff.duration - 1;
+          messages.push({
+            type: 'effect',
+            text: `${unit.name} — кровотечение: ${eff.value} урона (${fmtTurnsAfterTick(leftBl)}) 💉`,
+          });
           break;
+        }
 
-        case 'regen':
+        case 'regen': {
           const healed = Math.min(eff.value, unit.stats.maxHp - unit.stats.hp);
           unit.stats.hp += healed;
-          if (healed > 0)
-            messages.push({ type: 'heal', text: `${unit.name} восстанавливает ${healed} HP ✨` });
+          const leftR = eff.duration - 1;
+          if (healed > 0) {
+            messages.push({
+              type: 'heal',
+              text: `${unit.name} — регенерация: +${healed} HP (${fmtTurnsAfterTick(leftR)}) ✨`,
+            });
+          }
           break;
+        }
 
         case 'stun':
-          // Stun is checked in battle.js before unit acts
+          messages.push({
+            type: 'effect',
+            text: `${unit.name} — пропуск хода (${fmtStunRemaining(eff.duration)}) 💫`,
+          });
           break;
       }
 

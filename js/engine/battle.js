@@ -103,10 +103,9 @@ const Battle = (() => {
       return;
     }
 
-    // Stun check
+    // Stun check (сообщение о пропуске даёт Effects.processTurnStart)
     const stun = unit.statusEffects.find(e => e.type === 'stun');
     if (stun) {
-      log('effect', `${unit.name} оглушён и пропускает ход! 💫`);
       nextTurn();
       return;
     }
@@ -277,7 +276,7 @@ const Battle = (() => {
     // Dodge check
     const dodgeAb = hasAbility(target, 'dodge');
     if (dodgeAb && Math.random() < (dodgeAb.dodgeChance || 0.15)) {
-      log('system', `${attacker.name} промахивается — ${target.name} уклоняется! 💨`);
+      log('system', `${attacker.name} («${getBasicAttackLabel(attacker)}») промах — ${target.name} уклоняется! 💨`);
       if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(target.instanceId, 0, 'miss');
       return;
     }
@@ -304,9 +303,10 @@ const Battle = (() => {
       BattlefieldUI.showDamageNumber(target.instanceId, dmg, isCrit ? 'crit' : 'damage');
     }
 
+    const atkLabel = getBasicAttackLabel(attacker);
     const rangeSuffix = (rangeMod < 1) ? ` (×${rangeMod} дальность)` : '';
     const critSuffix  = isCrit ? ' 💥 КРИ!' : '';
-    log('damage', `${attacker.name} атакует ${target.name} — ${dmg} урона (${hpBefore}/${hpAfter} HP)${rangeSuffix}${critSuffix}`);
+    log('damage', `${attacker.name} — «${atkLabel}» → ${target.name}: ${dmg} урона (${hpBefore}/${hpAfter} HP)${rangeSuffix}${critSuffix}`);
 
     // On-hit effects
     checkOnHitEffects(attacker, target);
@@ -325,7 +325,7 @@ const Battle = (() => {
         if (state.mode !== 'fast') {
           BattlefieldUI.showDamageNumber(target2.instanceId, dmg2, isCrit2 ? 'crit' : 'damage');
         }
-        log('damage', `${attacker.name} 2й выстрел → ${target2.name} — ${dmg2} урона (${hp2Before}/${hp2After} HP)${isCrit2 ? ' 💥' : ''}`);
+        log('damage', `${attacker.name} — «${atkLabel}» (2-й выстрел) → ${target2.name}: ${dmg2} урона (${hp2Before}/${hp2After} HP)${isCrit2 ? ' 💥' : ''}`);
         checkOnHitEffects(attacker, target2);
       }
     }
@@ -355,7 +355,7 @@ const Battle = (() => {
         applyDamage(t, dmg, attacker.side);
         const hpAfter = t.stats.hp;
         if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, dmg, 'damage');
-        log('damage', `${attacker.name} → ${spell.name} по ${t.name} — ${dmg} урона (${hpBefore}/${hpAfter} HP) ✨`);
+        log('damage', `${attacker.name} — «${spell.name}» → ${t.name}: ${dmg} урона (${hpBefore}/${hpAfter} HP) ✨`);
       });
     }
 
@@ -368,7 +368,7 @@ const Battle = (() => {
         t.stats.hp += healed;
         const hpAfter = t.stats.hp;
         if (state.mode !== 'fast') BattlefieldUI.showDamageNumber(t.instanceId, healed, 'heal');
-        log('heal', `${attacker.name} → ${spell.name}: ${t.name} восстанавливает ${healed} HP (${hpBefore}/${hpAfter}) 💚`);
+        log('heal', `${attacker.name} — «${spell.name}» → ${t.name}: +${healed} HP (${hpBefore}/${hpAfter}) 💚`);
       });
     }
 
@@ -475,7 +475,7 @@ const Battle = (() => {
     switch (effectStr) {
       case 'stun_1':
         Effects.apply(target, { type: 'stun', duration: 1 });
-        log('effect', `${target.name} оглушён (${spell.name}) 💫`);
+        log('effect', `${target.name} оглушён на 1 ход («${spell.name}») 💫`);
         break;
       case 'initiative_down_4':
         target.stats.initiative = Math.max(0.5, (target.stats.initiative || 0) - 4);
@@ -483,7 +483,7 @@ const Battle = (() => {
         break;
       case 'ranged_dmg_reduce_40pct':
         Effects.apply(target, { type: 'buff', duration: 3, value: 40 });
-        log('effect', `${target.name}: защита от дальнего боя +40% на 3 хода`);
+        log('effect', `${target.name}: защита от дальнего урона +40%, 3 хода («${spell.name}»)`);
         break;
       case 'remove_debuffs': {
         const bad = new Set(['poison', 'burn', 'bleed', 'stun', 'slow', 'curse']);
@@ -516,8 +516,10 @@ const Battle = (() => {
     if (poisonAb && target.isAlive) {
       const chance = poisonAb.chance || 0.20;
       if (Math.random() < chance) {
-        Effects.apply(target, { type:'poison', duration: poisonAb.poisonDuration || 3, value: poisonAb.poisonDmg || 3 });
-        log('effect', `${target.name} отравлен! 🐍`);
+        const pDur = poisonAb.poisonDuration || 3;
+        const pVal = poisonAb.poisonDmg || 3;
+        Effects.apply(target, { type:'poison', duration: pDur, value: pVal });
+        log('effect', `${target.name} отравлен («${poisonAb.name || 'Яд'}»): ${pVal} урона/ход, ${pDur} ход. 🐍`);
       }
     }
   }
@@ -772,6 +774,19 @@ const Battle = (() => {
 
   function hasAbility(unit, abilityId) {
     return (unit.abilities || []).find(a => a.id === abilityId) || null;
+  }
+
+  /** Человекочитаемое имя базовой атаки (для лога). */
+  function getBasicAttackLabel(unit) {
+    if (unit.attackMode?.shots >= 2) {
+      const d = hasAbility(unit, 'double_shot');
+      if (d?.name) return d.name;
+    }
+    const t = unit.attackType || 'melee';
+    if (t === 'melee') return 'Ближний удар';
+    if (t === 'ranged') return 'Выстрел';
+    if (t === 'magic') return 'Магический удар';
+    return 'Атака';
   }
 
   function shuffle(arr) {

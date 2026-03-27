@@ -22,13 +22,14 @@
 2. **`cards_and_weapons.js`** (корень проекта) — `ALLIES`, `CLASSES`, `RACES`, `WEAPONS`, формулы `calcStat`, `calcInitiative`, `calcDamage`, дроп оружия и т.д.
 3. `js/data/enemies.js` — `ENEMY_TEMPLATES`.
 4. `js/data/locations.js` — `LOCATIONS`, `ARTIFACTS`, `getTempleBonus()`.
-5. `js/data/battleUnits.js` — фабрики `createBattleAlly`, `createBattleEnemy`, `generateLocationEnemies`, тестовый `createTestBattle` и шаблоны для демо.
-6. `js/engine/effects.js` — `Effects` (статусы, тики, мана).
-7. `js/engine/ai.js` — `AI.autoAllyAction` и логика врагов.
-8. `js/engine/battle.js` — **`Battle`** singleton: состояние боя, очередь ходов, урон, заклинания, режимы tactical/auto/fast.
-9. UI боёв: `battlefield.js`, `battleLog.js`.
-10. `portal.js`, `exchange.js`, `village.js`, `unitCard.js`, `barracks.js`, `arsenal.js`, `worldmap.js`, `squadSelect.js`, `villageMap.js`, `library.js`.
-11. **`js/main.js`** — `GameState`, `App`, инициализация и маршрутизация экранов.
+5. `js/data/battleUnits.js` — фабрики `createBattleAlly`, `createBattleEnemy`, баланс-пайплайн (`estimateEnemyPowerAsInBattle`, `generateLocationEnemies`), тестовый `createTestBattle`.
+6. `js/balanceTool.js` — dev-инструмент балансировки (модалка, localStorage overrides, power-инфо в бою/результате).
+7. `js/engine/effects.js` — `Effects` (статусы, тики, мана).
+8. `js/engine/ai.js` — `AI.autoAllyAction` и логика врагов.
+9. `js/engine/battle.js` — **`Battle`** singleton: состояние боя, очередь ходов, урон, заклинания, режимы tactical/auto/fast.
+10. UI боёв: `battlefield.js`, `battleLog.js`.
+11. `portal.js`, `exchange.js`, `village.js`, `unitCard.js`, `barracks.js`, `arsenal.js`, `worldmap.js`, `squadSelect.js`, `villageMap.js`, `library.js`.
+12. **`js/main.js`** — `GameState`, `App`, инициализация и маршрутизация экранов.
 
 Глобальные сущности (`const` на window): ожидается наличие `ALLIES`, `WEAPONS`, `LOCATIONS`, `Battle`, `GameState`, `App` и т.д.
 
@@ -44,6 +45,15 @@
 Публичный API: монеты/пыль, карты (разблокировка, апгрейд, переработка), экипировка (в т.ч. миграция со старого формата «одна строка weapon id»), оружие, локации, артефакты, отряд, магазин, квесты, `save`, `reset`.
 
 **`App.init()`** при старте вызывает **`GameState.load()`** — перечитывает сейв из `localStorage` и снова прогоняет `_ensureCardLevels` (при первом парсе скрипта данные уже поднимаются один раз в IIFE через `_loadSave`).
+
+### Dev overrides баланса
+
+- Отдельный persistent-слой: `window.__BALANCE_OVERRIDES__`.
+- Ключ в `localStorage`: **`balanceOverrides`**.
+- Формат:
+  - `encounters[encounterId].targetPower` — целевая сила врага в бою после макро-скейла.
+  - `encounters[encounterId].weight` — вес encounter в weighted pick.
+- Загрузка при старте: `loadBalanceOverrides()` вызывается в `App.init()`.
 
 ---
 
@@ -64,8 +74,9 @@
 |----------|------------|
 | `cards_and_weapons.js` | Союзники, классы, расы, оружие, таблицы дропа |
 | `js/data/enemies.js` | Шаблоны врагов для боёв и библиотеки |
-| `js/data/locations.js` | Локации, награды, `enemyCount`, лимиты отряда, артефакты, `getTempleBonus` |
-| `js/data/battleUnits.js` | Связка локации → враги, создание экземпляров юнитов для боя |
+| `js/data/locations.js` | Локации, награды, лимиты отряда, артефакты, `getTempleBonus` |
+| `js/data/battleUnits.js` | Связка локации → враги, power-формулы, баланс-пайплайн, dev-веса encounter |
+| `js/balanceTool.js` | Таблица баланса, apply overrides, power-инфо на battle/result |
 
 В проекте также встречается **`units_data.js`** (альтернативный/старый датасет с CommonJS `module.exports`) — **в основной цепочке `index.html` не подключается**.
 
@@ -104,16 +115,51 @@
 
 Лог: **`BattleLog`** пишет в `#battle-log`.
 
+Дополнительно:
+
+- В бою и в окне результата показывается блок power:
+  - `Игрок`, `Враги`, `Encounter`.
+- Источник — `window.__LAST_BATTLE_POWER_SNAPSHOT__`, заполняется в `App._startBattle`.
+
+## Dev UI баланса
+
+- Модалка `#balance-modal` (кнопка «Баланс»).
+- Таблица по всем локациям/encounter'ам:
+  - русское имя локации
+  - id encounter
+  - состав врагов
+  - сила как в бою (`estimateEnemyPowerAsInBattle`)
+  - поля `targetPower` / `weight`
+- Быстрые изменения: `+50/-50`.
+- Применение: `applyBalance(encounterId)` + `saveBalanceOverrides()`.
+
 ---
 
 ## Поток «локация → бой»
 
 1. `WorldMap` строит узлы из `LOCATIONS`, проверяет `requires`, зону и флаги прохождения.
 2. Игрок жмёт «В бой» → `SquadSelect.open(location)` — фильтр карт по `maxStars`, лимит `maxUnits`, восстановление `lastSquad`.
-3. `SquadSelect.startBattle()` собирает юнитов через `createBattleAlly`, врагов через `generateLocationEnemies` (или аналог), вызывает **`App.initCustomBattle(allies, enemies, location)`**.
+3. `SquadSelect.startBattle()` собирает юнитов через `createBattleAlly`, врагов через `generateLocationEnemies`, вызывает **`App.initCustomBattle(allies, enemies, location)`**.
 4. `App._startBattle` передаёт в **`Battle.init`** колбэки на лог и `BattlefieldUI`.
 
 Тестовый бой (`App.initBattle`) использует **`createTestBattle()`** из `battleUnits.js` без локации.
+
+### Детальный пайплайн генерации врагов (актуально)
+
+`generateLocationEnemies(location)`:
+
+1. Выбор encounter:
+   - `pickEncounterForLocation` по `location.targetPower`.
+   - weighted pick внутри кандидатов (`encounter.weight` + override `weight`).
+2. Нормализация количества врагов:
+   - диапазон от `getRecommendedEnemyCountRange(maxUnits)`,
+   - реальный спавн: `sampleEnemyCountWithPlusOne` (`+1` враг с шансом 30%).
+3. Плейсмент по колонкам (`melee/ranged/magic -> 1/2/3`, лимит 3 юнита в колонке).
+4. Синергии (`applyEnemySynergies`).
+5. Микро-скейл encounter (`encounter.statScale`).
+6. Макро-скейл:
+   - цель = override `targetPower` (если задан) или случайно из `location.targetPower`,
+   - clamp scale: `0.1..10` (override), `0.85..1.15` (обычно).
 
 ---
 

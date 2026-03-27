@@ -55,6 +55,7 @@
 
       <!-- Back button -->
       <button type="button" class="btn-back-village" onclick="App.showScreen('villagemap')" aria-label="Назад в деревню"><img src="assets/icons/return_to_the_village.png" alt="" draggable="false"><span class="btn-back-village-hint">назад в деревню</span></button>
+      <button type="button" class="btn-dev-balance" onclick="BalanceTool.openModal()" title="Таблица баланса (dev)">Баланс</button>
 
       <!-- Zone title bar (top centre) -->
       <div class="zone-title-bar">
@@ -92,6 +93,7 @@
     <div id="screen-squad_select" class="screen hidden">
       <div class="ss-header">
         <button class="ss-back-btn" onclick="App.showScreen('worldmap')">← Карта</button>
+        <button type="button" class="ss-balance-btn" onclick="BalanceTool.openModal()" title="Таблица баланса">Баланс</button>
         <div class="ss-header-center">
           <div class="ss-title">⚔️ Выбор отряда</div>
           <div class="ss-loc-name" id="ss-loc-name">Локация</div>
@@ -245,6 +247,7 @@
       </div>
 
       <div class="battle-status-strip">
+        <div id="battle-power-info" class="battle-power-info" aria-label="Сила отрядов"></div>
         <div class="btb-status" id="battle-status-text">Приготовьтесь к бою!</div>
       </div>
 
@@ -341,6 +344,7 @@
         <div class="battle-result-box">
           <div id="result-icon" class="result-icon"></div>
           <div id="result-title" class="result-title"></div>
+          <div id="battle-result-power-info" class="battle-power-info battle-power-info--result"></div>
           <div id="result-rewards" class="result-rewards"></div>
           <div id="result-buttons" class="result-buttons"></div>
         </div>
@@ -477,7 +481,33 @@
       <span class="hud-dust" id="hud-d5">★5: <b>0</b></span>
     </div>
 
-  </div><!-- #app -->
+    </div><!-- #app -->
+
+    <div id="balance-modal" class="balance-modal hidden" aria-hidden="true">
+      <div class="balance-modal-backdrop" onclick="BalanceTool.closeModal()"></div>
+      <div class="balance-modal-panel" role="dialog" aria-labelledby="balance-modal-title">
+        <header class="balance-modal-header">
+          <h2 id="balance-modal-title">Таблица баланса</h2>
+          <button type="button" class="balance-modal-close" onclick="BalanceTool.closeModal()" aria-label="Закрыть">×</button>
+        </header>
+        <div class="balance-modal-scroll">
+          <table class="balance-table">
+            <thead>
+              <tr>
+                <th>Локация</th>
+                <th>Encounter</th>
+                <th>Состав</th>
+                <th>Сила (бой)</th>
+                <th>Цель (враги)</th>
+                <th>Вес</th>
+                <th>Действие</th>
+              </tr>
+            </thead>
+            <tbody id="balance-modal-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
   <!-- Scripts -->
   <script src="js/npc_dialogues.js"></script>
@@ -485,6 +515,7 @@
   <script src="js/data/enemies.js"></script>
   <script src="js/data/locations.js"></script>
   <script src="js/data/battleUnits.js"></script>
+  <script src="js/balanceTool.js"></script>
   <script src="js/engine/effects.js"></script>
   <script src="js/engine/ai.js"></script>
   <script src="js/engine/battle.js"></script>

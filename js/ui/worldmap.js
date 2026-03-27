@@ -5,6 +5,15 @@
 // mapUnit 'percent' (по умолчанию): 0–100 внутри блока .zone-nodes.
 // mapUnit 'px': пиксели от левого верхнего угла .zone-nodes.
 
+function _worldMapEscapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 const WorldMap = {
   currentZone: 1,
   totalZones: 5,
@@ -81,56 +90,70 @@ const WorldMap = {
     svg.innerHTML = `<path class="zone-route-path" d="${d}" fill="none" />`;
   },
 
-  _estimateLocationEnemyPowerRange(loc) {
-    const zone = loc.zone || 1;
-    const stars = Math.min(Math.max(zone - 1, 1), 5);
-    const level = Math.max(1, (zone - 1) * 2);
+  /**
+   * Те же цифры силы и состава, что в dev-таблице баланса (`estimateEnemyPowerAsInBattle`).
+   */
+  _formatLocationEncounterTableHtml(loc) {
+    if (typeof estimateEnemyPowerAsInBattle !== 'function') return { html: '', rangeStr: '?' };
 
-    const calcGroup = (templateIds) => {
-      const units = [];
-      const colCount = { 1: 0, 2: 0, 3: 0 };
-
-      (templateIds || []).forEach(templateId => {
-        const tmpl = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[templateId] : null;
-        if (!tmpl || typeof createBattleEnemy !== 'function') return;
-
-        const at = tmpl.attackType || 'melee';
-        const col = at === 'ranged' ? 2 : (at === 'magic' ? 3 : 1);
-        if ((colCount[col] || 0) >= 3) return; // strict line limit: 3 units per column
-
-        const row = (colCount[col] || 0) + 1;
-        colCount[col] = row;
-
-        const e = createBattleEnemy(templateId, col, row, stars, level);
-        if (e) units.push(e);
-      });
-
-      if (typeof applyEnemySynergies === 'function') applyEnemySynergies(units);
-      if (typeof calculateGroupPower === 'function') return calculateGroupPower(units);
-      if (typeof calculateUnitPower === 'function') {
-        return units.reduce((sum, u) => sum + calculateUnitPower(u), 0);
-      }
-      return 0;
-    };
-
+    const overrides = (typeof window !== 'undefined' && window.__BALANCE_OVERRIDES__?.encounters) || {};
+    const rows = [];
     const powers = [];
 
-    if (Array.isArray(loc.encounters) && loc.encounters.length) {
-      loc.encounters.forEach(enc => {
-        powers.push(calcGroup(enc.enemies || []));
-      });
+    const tmplName = (id) => {
+      const t = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[id] : null;
+      return t ? t.name : id;
+    };
+
+    const pushEnc = (enc) => {
+      const ov = overrides[enc.id] || {};
+      try {
+        const est = estimateEnemyPowerAsInBattle(loc, enc, {
+          overrideTargetPower: ov.targetPower != null && Number.isFinite(ov.targetPower)
+            ? ov.targetPower
+            : null,
+        });
+        powers.push(est.power);
+        const comp = (est.spawnEncounter?.enemies || []).map(tmplName).join(', ') || '—';
+        rows.push(`
+          <div class="lp-enc-row">
+            <span class="lp-enc-id"><code>${_worldMapEscapeHtml(enc.id)}</code></span>
+            <span class="lp-enc-comp">${_worldMapEscapeHtml(comp)}</span>
+            <span class="lp-enc-pow" title="Сила в бою (как в таблице баланса)"><strong>${est.power}</strong></span>
+          </div>`);
+      } catch (e) {
+        /* пропуск варианта */
+      }
+    };
+
+    if (loc.encounters && loc.encounters.length) {
+      loc.encounters.forEach(pushEnc);
     } else {
-      const pool = Array.isArray(loc.enemies) ? loc.enemies : [];
-      const countMin = Array.isArray(loc.enemyCount) ? loc.enemyCount[0] : 1;
-      const countMax = Array.isArray(loc.enemyCount) ? loc.enemyCount[1] : countMin;
-      for (let count = countMin; count <= countMax; count++) {
-        const templateIds = pool.slice(0, count).map((_, i) => pool[i % pool.length]);
-        powers.push(calcGroup(templateIds));
+      const pseudo = { id: `${loc.id}__pool`, enemies: [...(loc.enemies || [])] };
+      try {
+        const est = estimateEnemyPowerAsInBattle(loc, pseudo, { overrideTargetPower: null });
+        powers.push(est.power);
+        const comp = (est.spawnEncounter?.enemies || []).map(tmplName).join(', ') || '—';
+        rows.push(`
+          <div class="lp-enc-row lp-enc-row--pool">
+            <span class="lp-enc-id"><span class="lp-enc-pool-label">пул</span></span>
+            <span class="lp-enc-comp">${_worldMapEscapeHtml(comp)}</span>
+            <span class="lp-enc-pow"><strong>${est.power}</strong></span>
+          </div>`);
+      } catch (e) {
+        /* — */
       }
     }
 
-    if (!powers.length) return null;
-    return { min: Math.min(...powers), max: Math.max(...powers) };
+    const rangeStr = powers.length
+      ? `${Math.min(...powers)}–${Math.max(...powers)}`
+      : '?';
+
+    const html = rows.length
+      ? `<div class="lp-encounter-table" aria-label="Состав и сила по encounter">${rows.join('')}</div>`
+      : '';
+
+    return { html, rangeStr };
   },
 
   /** Смена фона с плавным появлением (кнопки ‹ › между зонами). */
@@ -230,6 +253,11 @@ const WorldMap = {
       const starsMax    = loc.maxStars || 1;
       const starsStr    = '★'.repeat(starsMax) + '☆'.repeat(5 - starsMax);
 
+      const descRaw = (loc.desc || loc.description || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const descTeaser = descRaw.length > 100 ? `${descRaw.slice(0, 97)}…` : descRaw;
+
       const classes = [
         'loc-node',
         isCompleted ? 'completed' : '',
@@ -242,7 +270,10 @@ const WorldMap = {
       node.dataset.locId  = loc.id;
       node.innerHTML = `
         <div class="loc-icon-wrap">${loc.icon || '🗺️'}</div>
-        <div class="loc-name">${loc.name}</div>
+        <div class="loc-name">${_worldMapEscapeHtml(loc.name)}</div>
+        ${descTeaser
+        ? `<div class="loc-desc-teaser" title="${_worldMapEscapeHtml(descRaw)}">${_worldMapEscapeHtml(descTeaser)}</div>`
+        : ''}
         <div class="loc-stars">${starsStr}</div>`;
 
       node.addEventListener('click', () => this.selectLocation(loc.id));
@@ -286,13 +317,16 @@ const WorldMap = {
     const coinsMax = Array.isArray(rewards.coins) ? rewards.coins[1] : '';
     const coinsStr = coinsMax ? `${coinsMin}–${coinsMax}` : coinsMin;
 
-    const enemyCountStr = Array.isArray(loc.enemyCount)
-      ? `${loc.enemyCount[0]}–${loc.enemyCount[1]}`
-      : (loc.enemyCount || '?');
-    const enemyPowerRange = this._estimateLocationEnemyPowerRange(loc);
-    const enemyPowerStr = enemyPowerRange
-      ? `${enemyPowerRange.min}–${enemyPowerRange.max}`
-      : '?';
+    const enemyCountStr = typeof getEnemySpawnCountRangeForUI === 'function'
+      ? (() => {
+        const r = getEnemySpawnCountRangeForUI(loc);
+        return `${r.min}–${r.max}`;
+      })()
+      : (Array.isArray(loc.enemyCount)
+        ? `${loc.enemyCount[0]}–${loc.enemyCount[1]}`
+        : (loc.enemyCount || '?'));
+
+    const encDetail = this._formatLocationEncounterTableHtml(loc);
 
     const enemyChipsHtml = (loc.enemies || []).map(eId => {
       const t = (typeof ENEMY_TEMPLATES !== 'undefined') ? ENEMY_TEMPLATES[eId] : null;
@@ -365,7 +399,8 @@ const WorldMap = {
           <section class="lp-block lp-block--enemies">
             <h3 class="lp-block-title">Противники</h3>
             <div class="lp-enemies">${enemyChipsHtml || '<span class="lp-empty">—</span>'}</div>
-            <div class="lp-enemy-power">Уровень силы ~ ${enemyPowerStr}</div>
+            ${encDetail.html}
+            <div class="lp-enemy-power-summary">Сила в бою: <strong>${_worldMapEscapeHtml(encDetail.rangeStr)}</strong> <span class="lp-power-hint">(как в таблице баланса)</span></div>
           </section>
           <section class="lp-block lp-block--rewards">
             <h3 class="lp-block-title">Награды</h3>
