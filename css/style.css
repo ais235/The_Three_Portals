@@ -1829,6 +1829,18 @@ select { font-family: inherit; }
 }
 .modal-close:hover { background: rgba(255,50,50,0.2); color: #f66; }
 
+.enc-choice-modal { padding: 4px 0 8px; }
+.enc-choice-title { margin: 0 0 10px; font-size: 1.15rem; font-weight: 800; color: var(--text-accent); }
+.enc-choice-desc {
+  margin: 0 0 18px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.enc-choice-actions { display: flex; flex-direction: column; gap: 10px; }
+.enc-choice-btn { width: 100%; justify-content: center; }
+.enc-choice-cancel { opacity: 0.85; }
+
 /* Card detail modal */
 .modal-card-header {
   display: flex;
@@ -4905,6 +4917,16 @@ button.lp-enemy-chip:hover {
 }
 .dm-hp { font-size: 12px; color: rgba(255,255,255,.45); }
 .dm-hp b { color: #4ade80; }
+
+.dm-promote-status {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255,255,255,.42);
+  margin: 0 0 12px;
+  padding: 0;
+}
+.dm-promote-status strong { color: rgba(255,220,160,.75); font-weight: 600; }
+.dm-promote-status em { color: rgba(180,220,255,.75); font-style: normal; }
 
 .dm-btn {
   padding: 10px;

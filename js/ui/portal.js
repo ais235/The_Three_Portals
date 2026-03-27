@@ -60,7 +60,7 @@ const Portal = (() => {
 
     const ally = pool[Math.floor(Math.random() * pool.length)];
     const isNew = !GameState.isUnlocked(ally.id);
-    GameState.unlockCard(ally.id, rolledStars);
+    GameState.unlockCard(ally.id);
     const copyCount = GameState.getCardCopyCount(ally.id);
 
     return {

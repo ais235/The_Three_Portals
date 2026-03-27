@@ -1118,8 +1118,11 @@ function estimateEnemyPowerAsInBattle(location, baseEncounter, options = {}) {
     return { power: 0, basePower: 0, scale: 1, targetEncounterPower: 0, spawnEncounter: null };
   }
   const { stars, level } = getLocationStarsAndLevel(location);
-  const n = deterministicEnemyCountForBalancePreview(location);
-  const spawnEncounter = normalizeEncounterToCountDeterministic(baseEncounter, location, n);
+  const fixedN = options.fixedEnemyCount;
+  const n = fixedN != null ? fixedN : deterministicEnemyCountForBalancePreview(location);
+  const spawnEncounter = (fixedN != null && Array.isArray(baseEncounter.enemies) && baseEncounter.enemies.length === fixedN)
+    ? { id: baseEncounter.id, enemies: [...baseEncounter.enemies] }
+    : normalizeEncounterToCountDeterministic(baseEncounter, location, n);
   const enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
   applyEnemySynergies(enemies);
   applyEncounterStoredStatScale(enemies, spawnEncounter);
@@ -1149,7 +1152,7 @@ function estimateEnemyPowerAsInBattle(location, baseEncounter, options = {}) {
 }
 
 // ── Generate enemies from a location definition ──────────────────
-function generateLocationEnemies(location, playerUnits = null) {
+function generateLocationEnemies(location, playerUnits = null, options = {}) {
   // Ensure we have per-location min/max, targetPower, midPlayerPower.
   if (!BALANCE_TABLE_CACHE) buildBalanceTableForAllLocations();
 
@@ -1157,13 +1160,31 @@ function generateLocationEnemies(location, playerUnits = null) {
   const stars = Math.min(Math.max(zone - 1, 1), 5);
   const level = Math.max(1, (zone - 1) * 2);
 
-  const desiredEnemyCount = sampleEnemyCountWithPlusOne(location);
+  const gateOpen = typeof GameState !== 'undefined'
+    && location.bossEncounter
+    && location.clearsRequired != null
+    && typeof GameState.isBossGateOpen === 'function'
+    && GameState.isBossGateOpen(location.id, location);
+
+  const useBoss = options.forceBoss === true && gateOpen;
+
+  if (typeof window !== 'undefined') {
+    window.__LAST_WAS_BOSS_ENCOUNTER__ = !!useBoss;
+  }
+
+  let desiredEnemyCount = sampleEnemyCountWithPlusOne(location);
 
   let enemies = [];
   let spawnEncounter = null;
   let chosenBaseEncounter = null;
 
-  if (location.encounters && location.encounters.length) {
+  if (useBoss) {
+    const be = location.bossEncounter;
+    chosenBaseEncounter = { id: be.id, enemies: [...be.enemies] };
+    desiredEnemyCount = be.enemies.length;
+    spawnEncounter = { id: be.id, enemies: [...be.enemies] };
+    enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
+  } else if (location.encounters && location.encounters.length) {
     chosenBaseEncounter = pickEncounterForLocation(location, stars, level);
     spawnEncounter = normalizeEncounterToCount(chosenBaseEncounter, location, desiredEnemyCount);
     enemies = buildEncounterPlacedUnits(spawnEncounter, stars, level);
@@ -1225,7 +1246,9 @@ function generateLocationEnemies(location, playerUnits = null) {
 
   // Step 4 — макро-скейл к целевой силе (dev override = желаемая сила в бою после скейла)
   const baseEncounterPower = calculateGroupPower(enemies);
-  const tp = location.targetPower || [baseEncounterPower, baseEncounterPower];
+  const tp = (useBoss && location.bossEncounter?.targetPower)
+    ? location.bossEncounter.targetPower
+    : (location.targetPower || [baseEncounterPower, baseEncounterPower]);
   const chosenId = chosenBaseEncounter?.id;
   const encOverride = chosenId && typeof window !== 'undefined'
     ? window.__BALANCE_OVERRIDES__?.encounters?.[chosenId]

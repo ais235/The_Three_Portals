@@ -59,11 +59,17 @@ const CollectionUI = (() => {
     return ALLIES.filter(ally => {
       if (currentFilters.race  && ally.race  !== currentFilters.race)  return false;
       if (currentFilters.class && ally.class !== currentFilters.class) return false;
-      if (currentFilters.stars) {
-        const s = parseInt(currentFilters.stars);
-        if (ally.starRange[0] > s || ally.starRange[1] < s) return false;
-      }
+
       const isUnlocked = GameState.isUnlocked(ally.id);
+
+      if (currentFilters.stars) {
+        const s = parseInt(currentFilters.stars, 10);
+        if (isUnlocked) {
+          if (GameState.getCardCurrentStars(ally.id) !== s) return false;
+        } else if (ally.starRange[0] > s || ally.starRange[1] < s) {
+          return false;
+        }
+      }
       if (currentFilters.locked === 'unlocked' && !isUnlocked) return false;
       if (currentFilters.locked === 'locked'   && isUnlocked)  return false;
       return true;

@@ -21,6 +21,10 @@ const DEFAULT_SAVE = {
   equipped:      {},
   ownedWeapons:  [],
   completedLocations: [],
+  /** { locationId: число побед на локации } — для цикла зачисток до босса */
+  completedCount:    {},
+  /** id локаций, где повержен мини-босс (открытие следующего узла по сюжету) */
+  defeatedLocationBosses: [],
   artifacts:     [],
   lastSquad:     [],
   starterPackChosen: false,
@@ -138,6 +142,12 @@ const GameState = (() => {
           // Не показывать выбор стартовой колоды на уже существующих сейвах.
           starterPackChosen: saved.starterPackChosen ?? true,
           starterPackId: saved.starterPackId || '',
+          completedCount: typeof saved.completedCount === 'object' && saved.completedCount !== null
+            ? { ...saved.completedCount }
+            : {},
+          defeatedLocationBosses: Array.isArray(saved.defeatedLocationBosses)
+            ? [...saved.defeatedLocationBosses]
+            : [],
         };
         // Migrate old equipped format
         for (const [uid, val] of Object.entries(d.equipped || {})) {
@@ -175,6 +185,8 @@ const GameState = (() => {
       equipped:            data.equipped,
       ownedWeapons:        data.ownedWeapons,
       completedLocations:  data.completedLocations,
+      completedCount:      data.completedCount || {},
+      defeatedLocationBosses: data.defeatedLocationBosses || [],
       artifacts:           data.artifacts,
       lastSquad:           data.lastSquad,
       shopLastRefresh:     data.shopLastRefresh,
@@ -217,15 +229,14 @@ const GameState = (() => {
   function getUnlocked() { return [...data.unlockedCards]; }
 
   /** Добавляет копию карты (дубликаты не заменяются пылью). Возвращает true, если это первая копия этого id. */
-  function unlockCard(id, stars) {
+  function unlockCard(id) {
     const ally = ALLIES.find(a => a.id === id);
-    const s = stars ?? ally?.starRange[0] ?? 1;
     const isFirstCopy = !data.unlockedCards.includes(id);
     data.unlockedCards.push(id);
+    // Текущая ★ — только прогресс игрока (promoteStar / стартовый набор), не «тир выпадения» из портала/магазина.
     if (!data.cardLevels[id]) {
-      data.cardLevels[id] = { stars: s, powerLevel: 1 };
-    } else if (s > data.cardLevels[id].stars) {
-      data.cardLevels[id].stars = s;
+      const startStars = ally ? ally.starRange[0] : 1;
+      data.cardLevels[id] = { stars: startStars, powerLevel: 1 };
     }
     save();
     return isFirstCopy;
@@ -382,6 +393,14 @@ const GameState = (() => {
 
   function getCardLevel(id) {
     return data.cardLevels[id] || null;
+  }
+
+  /** Текущая ★ прогресса (`cardLevels`); если записи нет — нижняя граница `starRange` шаблона. */
+  function getCardCurrentStars(id) {
+    const lvl = data.cardLevels[id];
+    if (lvl) return lvl.stars;
+    const ally = ALLIES.find(a => a.id === id);
+    return ally ? ally.starRange[0] : 1;
   }
 
   function hasStarterPackChoice() {
@@ -542,6 +561,40 @@ const GameState = (() => {
   }
   function isCompleted(id) { return data.completedLocations.includes(id); }
 
+  function getLocationClearCount(locationId) {
+    return (data.completedCount && data.completedCount[locationId]) || 0;
+  }
+  function incrementLocationClear(locationId) {
+    if (!data.completedCount) data.completedCount = {};
+    data.completedCount[locationId] = (data.completedCount[locationId] || 0) + 1;
+    save();
+  }
+  function resetLocationClearCount(locationId) {
+    if (!data.completedCount) data.completedCount = {};
+    data.completedCount[locationId] = 0;
+    save();
+  }
+  /** Доступен выбор «босс / обычные»: N зачисток и мини-босс ещё не снят. */
+  function isBossGateOpen(locationId, location) {
+    if (!location?.bossEncounter || location.clearsRequired == null) return false;
+    if (isLocationMiniBossDefeated(locationId)) return false;
+    return getLocationClearCount(locationId) >= location.clearsRequired;
+  }
+  function isBossEncounterAvailable(locationId, location) {
+    return isBossGateOpen(locationId, location);
+  }
+
+  function isLocationMiniBossDefeated(locationId) {
+    return (data.defeatedLocationBosses || []).includes(locationId);
+  }
+  function markLocationMiniBossDefeated(locationId) {
+    if (!data.defeatedLocationBosses) data.defeatedLocationBosses = [];
+    if (!data.defeatedLocationBosses.includes(locationId)) {
+      data.defeatedLocationBosses.push(locationId);
+      save();
+    }
+  }
+
   // ── Artifacts ──────────────────────────────────────────────────
   function addArtifact(id) {
     if (!data.artifacts.includes(id)) {
@@ -571,7 +624,7 @@ const GameState = (() => {
     if (!spendCoins(item.price, true)) return { ok:false, reason:`Недостаточно монет (нужно ${item.price})` };
     item.purchased = true;
     if (item.type === 'card') {
-      unlockCard(item.id, item.stars);
+      unlockCard(item.id);
     } else if (item.type === 'weapon') {
       addWeapon(item.id);
     }
@@ -650,12 +703,14 @@ const GameState = (() => {
 
     load, save, spendCoins, addCoins, getCoins,
     addDust, spendDust, getDust,
-    isUnlocked, getUnlocked, getUniqueUnlockedIds, unlockCard, getCardCopyCount, getCardLevel, upgradeCard,
+    isUnlocked, getUnlocked, getUniqueUnlockedIds, unlockCard, getCardCopyCount, getCardLevel, getCardCurrentStars, upgradeCard,
     getStarCrystals, getPromoteRecipe, showCrystalProgressBadge, canCrystallizeCard, crystallizeCard, canPromoteStar, promoteStar,
     equipWeapon, unequipWeapon, getEquipped, getEquippedSlots, getAllEquipped, getWeaponOwner,
     addWeapon, hasWeapon, getOwnedWeapons,
     recycleCard,
     completeLocation, isCompleted,
+    getLocationClearCount, incrementLocationClear, resetLocationClearCount,
+    isBossEncounterAvailable, isBossGateOpen, isLocationMiniBossDefeated, markLocationMiniBossDefeated,
     addArtifact, hasArtifact, getArtifacts,
     setLastSquad, getLastSquad,
     getShopItems, buyShopItem, refreshShop,
@@ -926,7 +981,12 @@ const App = {
         const [minC, maxC] = loc.rewards.coins || [60, 100];
         coinsEarned = minC + Math.floor(Math.random() * (maxC - minC + 1));
         GameState.addCoins(coinsEarned);
-        GameState.completeLocation(loc.id);
+
+        const hasMiniBossCycle = !!(loc.bossEncounter && loc.clearsRequired != null);
+        const beatMiniBoss = !!window.__LAST_WAS_BOSS_ENCOUNTER__;
+        if (!hasMiniBossCycle || beatMiniBoss) {
+          GameState.completeLocation(loc.id);
+        }
 
         // Weapon drop
         if (Math.random() < (loc.rewards.weaponChance || 0)) {
@@ -956,6 +1016,15 @@ const App = {
         if (typeof WorldMap !== 'undefined') {
           const wmEl = document.getElementById('screen-worldmap');
           if (wmEl && !wmEl.classList.contains('hidden')) WorldMap.render();
+        }
+
+        if (hasMiniBossCycle && typeof GameState.incrementLocationClear === 'function') {
+          if (beatMiniBoss) {
+            if (GameState.markLocationMiniBossDefeated) GameState.markLocationMiniBossDefeated(loc.id);
+            if (GameState.resetLocationClearCount) GameState.resetLocationClearCount(loc.id);
+          } else {
+            GameState.incrementLocationClear(loc.id);
+          }
         }
       } else {
         // Test battle fallback
@@ -1073,7 +1142,12 @@ const App = {
     }
 
     if (btns) {
-      const retryTarget = loc ? `SquadSelect.open(getLocation('${loc.id}'))` : `Battle.restart()`;
+      const retryMode = (typeof window !== 'undefined' && window.__LAST_SQUAD_ENCOUNTER_MODE__ === 'boss')
+        ? 'boss'
+        : 'normal';
+      const retryTarget = loc
+        ? `SquadSelect.open(getLocation('${loc.id}'), { encounterMode: '${retryMode}' })`
+        : `Battle.restart()`;
       const mapBtn = loc
         ? `<button class="result-btn primary" onclick="App.showScreen('worldmap')">🗺️ Карта мира</button>`
         : '';

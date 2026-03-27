@@ -105,6 +105,38 @@ const WorldMap = {
       return t ? t.name : id;
     };
 
+    const gateOpen =
+      typeof GameState !== 'undefined'
+      && loc.bossEncounter
+      && loc.clearsRequired != null
+      && typeof GameState.isBossGateOpen === 'function'
+      && GameState.isBossGateOpen(loc.id, loc);
+
+    if (gateOpen && loc.bossEncounter?.enemies?.length && typeof estimateEnemyPowerAsInBattle === 'function') {
+      const be = loc.bossEncounter;
+      const pseudo = { id: be.id, enemies: [...be.enemies] };
+      const tpMid = be.targetPower
+        ? Math.round((be.targetPower[0] + be.targetPower[1]) / 2)
+        : null;
+      try {
+        const est = estimateEnemyPowerAsInBattle(loc, pseudo, {
+          overrideTargetPower: tpMid,
+          fixedEnemyCount: be.enemies.length,
+        });
+        powers.push(est.power);
+        const bossName = be.name || be.id;
+        const comp = (est.spawnEncounter?.enemies || []).map(tmplName).join(', ') || '—';
+        rows.push(`
+          <div class="lp-enc-row lp-enc-row--boss">
+            <span class="lp-enc-id"><code>${_worldMapEscapeHtml(be.id)}</code> <span class="lp-boss-tag">босс</span></span>
+            <span class="lp-enc-comp">${_worldMapEscapeHtml(comp)}</span>
+            <span class="lp-enc-pow" title="${_worldMapEscapeHtml(bossName)}"><strong>${est.power}</strong></span>
+          </div>`);
+      } catch (e) {
+        /* skip */
+      }
+    }
+
     const pushEnc = (enc) => {
       const ov = overrides[enc.id] || {};
       try {
@@ -373,6 +405,20 @@ const WorldMap = {
           <h2 class="lp-name">${loc.isBoss ? '👑 ' : ''}${loc.name}</h2>
           <div class="lp-stars" aria-label="звёздность локации">${starsStr}</div>
         </header>
+        ${(() => {
+          if (!loc.bossEncounter || loc.clearsRequired == null || typeof GameState === 'undefined') return '';
+          const n = GameState.getLocationClearCount(loc.id);
+          const gate = GameState.isBossGateOpen(loc.id, loc);
+          const bossDone = GameState.isLocationMiniBossDefeated(loc.id);
+          if (bossDone) {
+            return `<div class="lp-next-enc">Мини-босс повержен. Можно фармить обычных врагов.</div>`;
+          }
+          if (gate) {
+            const bn = _worldMapEscapeHtml(loc.bossEncounter.name || 'Босс');
+            return `<div class="lp-next-enc lp-next-enc--boss">После ${loc.clearsRequired} побед доступен <strong>${bn}</strong>. Выберите тип боя при входе. Следующая локация на карте откроется только после победы над боссом; пока можно бить обычных и качаться.</div>`;
+          }
+          return `<div class="lp-next-enc">Зачисток: <strong>${n}</strong> / ${loc.clearsRequired} до выбора босса</div>`;
+        })()}
 
         <div class="lp-blocks">
           <section class="lp-block lp-block--desc">
@@ -441,11 +487,41 @@ const WorldMap = {
     const loc = LOCATIONS.find(l => l.id === locId);
     if (!loc) return;
     if (!this._isZoneUnlockedForPlay(loc.zone) || !this._isUnlocked(loc)) return;
+    if (
+      typeof GameState !== 'undefined'
+      && typeof GameState.isBossGateOpen === 'function'
+      && GameState.isBossGateOpen(loc.id, loc)
+    ) {
+      this.openEncounterChoiceModal(loc);
+      return;
+    }
     if (typeof SquadSelect !== 'undefined') {
-      SquadSelect.open(loc);
+      SquadSelect.open(loc, { encounterMode: 'normal' });
     } else {
       GameState.currentLocation = locId;
       App.showScreen('squad_select');
+    }
+  },
+
+  openEncounterChoiceModal(loc) {
+    const bossName = _worldMapEscapeHtml(loc.bossEncounter?.name || 'босса');
+    const lid = _worldMapEscapeHtml(loc.id);
+    if (typeof App !== 'undefined' && App.openModal) {
+      App.openModal(`
+        <div class="enc-choice-modal">
+          <h3 class="enc-choice-title">Кого вызываете?</h3>
+          <p class="enc-choice-desc">Доступен <strong>${bossName}</strong>. Пока он не повержен, <em>следующая локация по сюжету не откроется</em> — но вы можете сражаться с обычными врагами этой точки и копить силу.</p>
+          <div class="enc-choice-actions">
+            <button type="button" class="result-btn primary enc-choice-btn"
+              onclick="App.forceCloseModal(); SquadSelect.open(getLocation('${lid}'), { encounterMode: 'boss' })">⚔️ Босс локации</button>
+            <button type="button" class="result-btn enc-choice-btn"
+              onclick="App.forceCloseModal(); SquadSelect.open(getLocation('${lid}'), { encounterMode: 'normal' })">🐺 Обычные противники</button>
+            <button type="button" class="result-btn enc-choice-btn enc-choice-cancel"
+              onclick="App.forceCloseModal()">Отмена</button>
+          </div>
+        </div>`);
+    } else {
+      if (typeof SquadSelect !== 'undefined') SquadSelect.open(loc, { encounterMode: 'normal' });
     }
   },
 

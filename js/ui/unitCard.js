@@ -213,6 +213,12 @@ function buildCardDetailModalInnerHTML(cardId) {
   const canProm    = isOwned && typeof GameState.canPromoteStar === 'function' && GameState.canPromoteStar(cardId);
   const belowMaxStar = stars < card.starRange[1];
 
+  const promoteBlock = !belowMaxStar
+    ? '<p class="dm-promote-status">Дальнейшее повышение звёздности для этого героя недоступно.</p>'
+    : (canProm
+      ? `<button type="button" class="dm-btn dm-btn-promote" onclick="UnitCard.doPromoteStar('${cardId}')">✦ Улучшить звёздность (+1★)</button>`
+      : `<p class="dm-promote-status">Повысить ★ сейчас нельзя: нужны копии и при необходимости кристаллы ★${cryTier} (строка выше). Счётчики <strong>Пыль ★1…★5</strong> в шапке экрана — только для <em>уровня силы</em> героя, к +★ не относятся.</p>`);
+
   const rightContent = isOwned ? `
     <div class="dm-sec">УРОВЕНЬ СИЛЫ</div>
     <div class="dm-lvl">
@@ -243,11 +249,7 @@ function buildCardDetailModalInnerHTML(cardId) {
           : '💎 Кристаллизовать (5 копий)')
         : `💎 Нужно ≥5 копий (сейчас ${copies})`}
     </button>
-    <button type="button" class="dm-btn dm-btn-promote${canProm && belowMaxStar ? '' : ' dm-btn-disabled'}"
-            onclick="UnitCard.doPromoteStar('${cardId}')"
-            ${canProm && belowMaxStar ? '' : 'disabled'}>
-      ${!belowMaxStar ? '✦ Макс. ★' : (canProm ? '✦ Улучшить звёздность' : '✦ 10 / 11+ / 9+1кр / 8+2кр')}
-    </button>
+    ${promoteBlock}
 
     <div class="dm-sec">ХАРАКТЕРИСТИКИ</div>
     <div class="dm-stats">
@@ -479,6 +481,9 @@ function doPromoteStar(cardId) {
   } else {
     const btn = document.querySelector('.card-detail-modal .dm-btn-promote');
     if (btn) btn.textContent = res.reason || 'Нельзя';
+    else if (typeof VillageUI !== 'undefined' && VillageUI.showToast) {
+      VillageUI.showToast(res.reason || 'Нельзя выполнить +★', 'error');
+    }
   }
 }
 

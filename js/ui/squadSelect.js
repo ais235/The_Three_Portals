@@ -4,6 +4,8 @@
 
 const SquadSelect = (() => {
   let currentLoc   = null;
+  /** 'normal' | 'boss' — только если открыто ворот мини-босса */
+  let encounterMode = 'normal';
   let selectedIds  = [];  // array of allyId strings
 
   // Column default by class
@@ -16,8 +18,9 @@ const SquadSelect = (() => {
 
   // ── Open ─────────────────────────────────────────────────────
 
-  function open(location) {
+  function open(location, options = {}) {
     currentLoc  = location;
+    encounterMode = options.encounterMode === 'boss' ? 'boss' : 'normal';
     // Restore last squad, filtering out cards that no longer pass constraints
     const last = GameState.getLastSquad ? GameState.getLastSquad() : [];
     const uniqLast = [...new Set(last)];
@@ -29,11 +32,13 @@ const SquadSelect = (() => {
     App.showScreen('squad_select');
   }
 
+  function _currentCardStars(allyId) {
+    return GameState.getCardCurrentStars(allyId);
+  }
+
   function _cardPassesConstraint(allyId) {
     if (!GameState.isUnlocked(allyId)) return false;
-    const lvl = GameState.getCardLevel(allyId);
-    if (!lvl) return false;
-    return lvl.stars <= currentLoc.maxStars;
+    return _currentCardStars(allyId) <= currentLoc.maxStars;
   }
 
   // ── Render ────────────────────────────────────────────────────
@@ -48,7 +53,11 @@ const SquadSelect = (() => {
 
   function _renderHeader() {
     const h = document.getElementById('ss-loc-name');
-    if (h) h.textContent = currentLoc.name;
+    if (h) {
+      h.textContent = encounterMode === 'boss'
+        ? `${currentLoc.name} · мини-босс`
+        : currentLoc.name;
+    }
 
     const squadPower = _calculateSelectedSquadPower();
     const c = document.getElementById('ss-constraints');
@@ -114,32 +123,30 @@ const SquadSelect = (() => {
   function _buildCardThumb(allyId, disabled) {
     const ally = ALLIES.find(a => a.id === allyId);
     if (!ally) return '';
-    const lvl  = GameState.getCardLevel(allyId) || { stars: 1, powerLevel: 1 };
+    const lvlStars = _currentCardStars(allyId);
     const cop  = GameState.getCardCopyCount(allyId);
     const sel  = selectedIds.includes(allyId);
     const cls  = ally.class || 'damage';
     const col  = CLASS_COL[cls] || 1;
 
     const colIcon = col === 1 ? '⚔️' : col === 2 ? '🏹' : '✨';
-    const classColor = `var(--col-${cls.replace('_', '-')}, #444)`;
 
-    const disabledAttr = disabled ? 'disabled' : '';
     const selClass     = sel  ? 'ss-thumb-selected' : '';
     const disClass     = disabled ? 'ss-thumb-disabled' : '';
 
     return `
       <div class="ss-thumb ${selClass} ${disClass}"
            onclick="${disabled ? '' : `SquadSelect.toggleCard('${allyId}')`}"
-           title="${ally.name} ★${lvl.stars}">
+           title="${ally.name} ★${lvlStars}">
         <div class="ss-thumb-icon">${ally.icon}</div>
         <div class="ss-thumb-name">${ally.name}</div>
         <div class="ss-thumb-meta">
-          <span class="ss-thumb-stars">${'★'.repeat(lvl.stars)}</span>
+          <span class="ss-thumb-stars">${'★'.repeat(lvlStars)}</span>
           <span class="ss-thumb-col">${colIcon}</span>
           ${cop > 1 ? `<span class="ss-thumb-copies" title="Копий в коллекции">×${cop}</span>` : ''}
         </div>
         ${sel ? '<div class="ss-thumb-check">✓</div>' : ''}
-        ${disabled ? `<div class="ss-thumb-lock">★${lvl.stars}≤${currentLoc.maxStars}?</div>` : ''}
+        ${disabled ? `<div class="ss-thumb-lock">★${lvlStars} > ★${currentLoc.maxStars} лимита</div>` : ''}
       </div>`;
   }
 
@@ -158,12 +165,12 @@ const SquadSelect = (() => {
 
       colSlots.innerHTML = inCol.map(id => {
         const ally = ALLIES.find(a => a.id === id);
-        const lvl  = GameState.getCardLevel(id) || { stars: 1 };
+        const slotStars = _currentCardStars(id);
         return `
           <div class="ss-slot ss-slot-filled" onclick="SquadSelect.toggleCard('${id}')">
             <span class="ss-slot-icon">${ally?.icon || '?'}</span>
             <span class="ss-slot-name">${ally?.name || id}</span>
-            <span class="ss-slot-star">${'★'.repeat(lvl.stars)}</span>
+            <span class="ss-slot-star">${'★'.repeat(slotStars)}</span>
             <span class="ss-slot-remove">✕</span>
           </div>`;
       }).join('');
@@ -189,6 +196,13 @@ const SquadSelect = (() => {
         _showToast('В бой можно взять только одну копию каждого героя', 'error');
         return;
       }
+      if (!_cardPassesConstraint(allyId)) {
+        _showToast(
+          `Герой ★${_currentCardStars(allyId)} не подходит под лимит ★${currentLoc.maxStars} этой локации`,
+          'error'
+        );
+        return;
+      }
       if (selectedIds.length >= currentLoc.maxUnits) {
         _showToast(`Максимум ${currentLoc.maxUnits} юнитов!`, 'error');
         return;
@@ -212,6 +226,12 @@ const SquadSelect = (() => {
 
   function startBattle() {
     if (!selectedIds.length || !currentLoc) return;
+    const illegal = selectedIds.filter(id => !_cardPassesConstraint(id));
+    if (illegal.length) {
+      _showToast('В отряде есть герои с завышенной текущей ★ для этой локации — уберите их из слотов', 'error');
+      render();
+      return;
+    }
 
     // Save squad
     if (typeof GameState.setLastSquad === 'function') {
@@ -236,7 +256,12 @@ const SquadSelect = (() => {
     }
 
     // Generate enemies (with balance scaling using actual player power)
-    const enemies = generateLocationEnemies(currentLoc, allies);
+    if (typeof window !== 'undefined') {
+      window.__LAST_SQUAD_ENCOUNTER_MODE__ = encounterMode;
+    }
+    const enemies = generateLocationEnemies(currentLoc, allies, {
+      forceBoss: encounterMode === 'boss',
+    });
 
     // Launch battle
     App.initCustomBattle(allies, enemies, currentLoc);

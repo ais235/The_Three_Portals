@@ -128,6 +128,44 @@ const AI = (() => {
     return { spell: affordableSpells[0], targetType: 'unknown' };
   }
 
+  /**
+   * Порядок перебора доступных заклинаний в автобою (сначала сильнее / приоритет лечению как в chooseMageAction).
+   * sameSide — юниты стороны unit.
+   */
+  function buildSpellTryOrder(unit, sameSide) {
+    const mana = unit.stats.mana || 0;
+    const affordable = (unit.spells || []).filter(s => (s.cost || 0) <= mana);
+    if (!affordable.length) return [];
+
+    const dmgScore = s => (s.damage ? s.damage.min + s.damage.max : -1);
+    const healScore = s => (s.heal ? s.heal.min + s.heal.max : -1);
+
+    const injured = sameSide.filter(
+      a => a.isAlive && a.stats.hp < a.stats.maxHp * 0.5
+    );
+    const preferHeal = unit.class === 'mage_healer' && injured.length > 0;
+
+    let list;
+    if (preferHeal) {
+      const heals = affordable.filter(s => s.heal).sort((a, b) => healScore(b) - healScore(a));
+      const dmg = affordable.filter(s => s.damage).sort((a, b) => dmgScore(b) - dmgScore(a));
+      const rest = affordable.filter(s => !s.heal && !s.damage);
+      list = [...heals, ...dmg, ...rest];
+    } else {
+      const dmg = affordable.filter(s => s.damage).sort((a, b) => dmgScore(b) - dmgScore(a));
+      const rest = affordable.filter(s => !s.damage);
+      list = [...dmg, ...rest];
+    }
+
+    const seen = new Set();
+    return list.filter(s => {
+      const key = s.id || s.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   // ── Auto-ally AI ───────────────────────────────────────────────
 
   // AI for an ally unit (used in auto/fast mode)
@@ -135,7 +173,7 @@ const AI = (() => {
     // Mages with spells: 70% chance to use spell if available
     if (unit.spells && unit.spells.length && Math.random() < 0.7) {
       const action = chooseMageAction(unit, allAllies, allEnemies);
-      if (action) return action;
+      if (action) return { spellsFirst: true };
     }
 
     // Standard attack
@@ -146,5 +184,5 @@ const AI = (() => {
     return { attack: true, target };
   }
 
-  return { chooseTarget, getValidTargets, chooseMageAction, autoAllyAction };
+  return { chooseTarget, getValidTargets, chooseMageAction, buildSpellTryOrder, autoAllyAction };
 })();

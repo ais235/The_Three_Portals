@@ -176,6 +176,7 @@ const Battle = (() => {
     if (!effectStr) return '';
     const map = {
       stun_1: 'оглушение 1 ход',
+      initiative_down_3: '−3 инициативы',
       initiative_down_4: '−4 инициативы',
       ranged_dmg_reduce_40pct: '−40% дальн. урона 3 хода',
       remove_debuffs: 'снятие дебаффов',
@@ -336,13 +337,13 @@ const Battle = (() => {
     const targets = resolveSpellTargets(spell, attacker, targetUnit);
     if (!targets.length) {
       log('system', `${attacker.name}: нет целей для ${spell.name}`);
-      return;
+      return false;
     }
 
     const cost = spell.cost || 0;
     if ((attacker.stats.mana || 0) < cost) {
       log('system', `${attacker.name}: недостаточно маны для ${spell.name}`);
-      return;
+      return false;
     }
     attacker.stats.mana = (attacker.stats.mana || 0) - cost;
 
@@ -375,6 +376,8 @@ const Battle = (() => {
     if (spell.effect) {
       targets.forEach(t => applySpellEffectOnTarget(t, spell.effect, spell));
     }
+
+    return true;
   }
 
   /** Расширение целей по spell.area (ряд / колонка / крест / диагонали). */
@@ -463,6 +466,14 @@ const Battle = (() => {
         if (isEnemyPick || (!pickedUnit && enemies.length)) base = shuffle(enemies).slice(0, 3);
         else base = [];
         break;
+      case 'col1_enemies':
+        // Передняя линия врагов: все живые во вражеской колонке с минимальным номером (ближе к отряду игрока).
+        if (!enemies.length) base = [];
+        else {
+          const frontCol = Math.min(...enemies.map(e => e.column));
+          base = enemies.filter(e => e.column === frontCol);
+        }
+        break;
       default:
         base = [];
     }
@@ -476,6 +487,10 @@ const Battle = (() => {
       case 'stun_1':
         Effects.apply(target, { type: 'stun', duration: 1 });
         log('effect', `${target.name} оглушён на 1 ход («${spell.name}») 💫`);
+        break;
+      case 'initiative_down_3':
+        target.stats.initiative = Math.max(0.5, (target.stats.initiative || 0) - 3);
+        log('effect', `${target.name}: инициатива −3 («${spell.name}»)`);
         break;
       case 'initiative_down_4':
         target.stats.initiative = Math.max(0.5, (target.stats.initiative || 0) - 4);
@@ -512,14 +527,35 @@ const Battle = (() => {
   }
 
   function checkOnHitEffects(attacker, target) {
-    const poisonAb = hasAbility(attacker, 'poison_bite') || hasAbility(attacker, 'poison_blade');
-    if (poisonAb && target.isAlive) {
-      const chance = poisonAb.chance || 0.20;
-      if (Math.random() < chance) {
-        const pDur = poisonAb.poisonDuration || 3;
-        const pVal = poisonAb.poisonDmg || 3;
+    if (!target?.isAlive) return;
+    for (const ab of attacker.abilities || []) {
+      if (ab.type !== 'on_hit') continue;
+
+      if (ab.poisonDmg != null) {
+        const c = ab.chance != null ? ab.chance : 0.25;
+        if (Math.random() >= c) continue;
+        const pDur = ab.poisonDuration || 3;
+        const pVal = ab.poisonDmg;
         Effects.apply(target, { type:'poison', duration: pDur, value: pVal });
-        log('effect', `${target.name} отравлен («${poisonAb.name || 'Яд'}»): ${pVal} урона/ход, ${pDur} ход. 🐍`);
+        log('effect', `${target.name} отравлен («${ab.name || ab.id}»): ${pVal} урона/ход, ${pDur} ход. 🐍`);
+        continue;
+      }
+
+      if (ab.stunChance != null && !ab.effect) {
+        if (Math.random() < ab.stunChance) {
+          const d = ab.stunDuration || 1;
+          Effects.apply(target, { type:'stun', duration: d });
+          log('effect', `${target.name} оглушён на ${d} ход («${ab.name || ab.id}») 💫`);
+        }
+        continue;
+      }
+
+      if (ab.effect === 'stun_1') {
+        const c = ab.chance != null ? ab.chance : 1;
+        if (Math.random() < c) {
+          Effects.apply(target, { type:'stun', duration: 1 });
+          log('effect', `${target.name} оглушён на 1 ход («${ab.name || ab.id}») 💫`);
+        }
       }
     }
   }
@@ -589,7 +625,8 @@ const Battle = (() => {
       const ok =
         isValidSpellGridClick(spell, attacker, targetUnit);
       if (!ok) return;
-      executeSpell(attacker, spell, targetUnit);
+      const castOk = executeSpell(attacker, spell, targetUnit);
+      if (!castOk) return;
       state.pendingAction = null;
       renderAll();
       checkBattleEnd();
@@ -640,6 +677,23 @@ const Battle = (() => {
     renderAll();
   }
 
+  /** Автобой: перебирает доступные заклинания по приоритету, пока одно не сработает. */
+  function tryAutoSpellChain(unit) {
+    const same = unit.side === 'ally' ? state.allies : state.enemies;
+    const order = AI.buildSpellTryOrder(unit, same);
+    for (const spell of order) {
+      if (executeSpell(unit, spell, null)) return true;
+    }
+    return false;
+  }
+
+  function tryAllyBasicAttackLowestHp(unit) {
+    const targets = AI.getValidTargets(unit, state.enemies);
+    if (!targets.length) return;
+    const target = targets.reduce((best, t) => t.stats.hp < best.stats.hp ? t : best);
+    executeAttack(unit, target);
+  }
+
   // ── Auto turn ──────────────────────────────────────────────────
 
   function handleAutoTurn(unit) {
@@ -654,9 +708,7 @@ const Battle = (() => {
           // Mage spell chance
           if (unit.spells && unit.spells.length && Math.random() < 0.5) {
             const action = AI.chooseMageAction(unit, state.enemies, state.allies);
-            if (action && action.spell) {
-              executeSpell(unit, action.spell, null);
-            }
+            if (action) tryAutoSpellChain(unit);
           }
         } else {
           log('system', `${unit.name} не находит цели`);
@@ -667,8 +719,9 @@ const Battle = (() => {
         if (action) {
           if (action.attack && action.target) {
             executeAttack(unit, action.target);
-          } else if (action.spell) {
-            executeSpell(unit, action.spell, null);
+          } else if (action.spellsFirst) {
+            const ok = tryAutoSpellChain(unit);
+            if (!ok) tryAllyBasicAttackLowestHp(unit);
           }
         }
       }
@@ -724,7 +777,10 @@ const Battle = (() => {
         const action = AI.autoAllyAction(unit, state.allies, state.enemies);
         if (action) {
           if (action.attack && action.target) executeAttack(unit, action.target);
-          else if (action.spell) executeSpell(unit, action.spell, null);
+          else if (action.spellsFirst) {
+            const ok = tryAutoSpellChain(unit);
+            if (!ok) tryAllyBasicAttackLowestHp(unit);
+          }
         }
       }
 

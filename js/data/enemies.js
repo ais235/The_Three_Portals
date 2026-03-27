@@ -153,6 +153,85 @@ const ENEMY_TEMPLATES = {
     ],
   },
 
+  // ── Зона 1: Мини-боссы локаций ────────────────────────────────
+
+  rat_king: {
+    id: 'rat_king', name: 'Крысиный Король', icon: '👑🐀',
+    class: 'damage', race: 'beast',
+    isBossUnit: true,
+    base: { hp:120, meleeAtk:22, meleeDef:12, rangeDef:8, magicDef:6, initiative:7 },
+    attackColumns: [1], attackType: 'melee', ai: 'attack_front_first',
+    role: 'boss', aiPattern: 'front_pressure',
+    themes: ['boss', 'swarm', 'melee'],
+    abilities: [
+      { id:'king_bite', name:'Укус короля', type:'on_hit',
+        stunChance: 0.20, stunDuration: 1,
+        desc:'20% шанс оглушения на 1 ход.' },
+      { id:'call_swarm', name:'Зов стаи', type:'active', cooldown: 4,
+        desc:'Усиление — крысы слышат зов короля (см. баланс).' },
+    ],
+  },
+
+  spider_queen: {
+    id: 'spider_queen', name: 'Паучиха-матриарх', icon: '🕷️👑',
+    class: 'mage_debuff', race: 'beast',
+    isBossUnit: true,
+    base: { hp:100, meleeAtk:14, meleeDef:10, rangeDef:8, magicDef:7,
+            mana:70, manaRegen:22, initiative:6 },
+    attackColumns: [1, 2], attackType: 'melee', ai: 'attack_lowest_hp',
+    role: 'boss', aiPattern: 'aggressive',
+    themes: ['boss', 'poison', 'swarm', 'melee'],
+    abilities: [
+      { id:'deadly_poison', name:'Смертельный яд', type:'on_hit', chance:0.35,
+        poisonDmg:8, poisonDuration:3,
+        desc:'35% шанс яда: 8 урона/ход × 3 хода.' },
+    ],
+    spells: [
+      { id:'web_trap', name:'Паутина', cost:18, target:'single_enemy',
+        damage:{ min:5, max:10 }, effect:'initiative_down_3',
+        desc:'Опутывает цель, снижая инициативу на 3.' },
+    ],
+  },
+
+  snake_king: {
+    id: 'snake_king', name: 'Змеегор', icon: '🐍👑',
+    class: 'damage', race: 'beast',
+    isBossUnit: true,
+    base: { hp:95, meleeAtk:20, meleeDef:8, rangeDef:6, magicDef:5, initiative:9 },
+    attackColumns: [1, 2], attackType: 'melee', ai: 'attack_lowest_hp',
+    role: 'boss', aiPattern: 'aggressive',
+    themes: ['boss', 'evasion', 'poison', 'melee'],
+    abilities: [
+      { id:'deadly_bite', name:'Смертельный укус', type:'on_hit', chance:0.40,
+        poisonDmg:10, poisonDuration:3,
+        desc:'40% шанс яда: 10 урона/ход × 3 хода.' },
+      { id:'serpent_dodge', name:'Змеиный уход', type:'passive',
+        dodgeChance:0.25,
+        desc:'25% шанс уклонения.' },
+    ],
+  },
+
+  forest_horror: {
+    id: 'forest_horror', name: 'Лесной ужас', icon: '🌳👹',
+    class: 'tank', race: 'beast',
+    isBossUnit: true,
+    base: { hp:180, meleeAtk:24, meleeDef:18, rangeDef:12, magicDef:8,
+            mana:60, manaRegen:18, initiative:4 },
+    attackColumns: [1], attackType: 'melee', ai: 'attack_front_first',
+    role: 'boss', aiPattern: 'front_pressure',
+    themes: ['boss', 'tank', 'melee'],
+    abilities: [
+      { id:'root_grasp', name:'Хватка корней', type:'on_hit', chance:0.30,
+        effect:'stun_1',
+        desc:'30% шанс оглушить на 1 ход.' },
+    ],
+    spells: [
+      { id:'tentacle_smash', name:'Удар щупалец', cost:22, target:'single_enemy',
+        damage:{ min:12, max:20 }, area: { shape:'column', scope:'enemy' },
+        desc:'Бьёт по всей колонке цели.' },
+    ],
+  },
+
   // ── Зона 2: Руины ────────────────────────────────────────────
 
   troll: {
