@@ -91,6 +91,21 @@ function balanceCard(card, targetPower = 120) {
     if (typeof v === 'number') card.stats[key] = Math.max(0, Math.round(v));
   }
 
+  for (const a of card.abilities) {
+    if (typeof a.value === 'number') {
+      a.value = Math.round(a.value * 1000) / 1000;
+    }
+    if (typeof a.damagePerTurn === 'number') {
+      a.damagePerTurn = Math.round(a.damagePerTurn * 100) / 100;
+    }
+    if (typeof a.duration === 'number') {
+      a.duration = Math.max(1, Math.round(a.duration));
+    }
+    if (typeof a.summonPower === 'number') {
+      a.summonPower = Math.round(a.summonPower * 10) / 10;
+    }
+  }
+
   return card;
 }
 
